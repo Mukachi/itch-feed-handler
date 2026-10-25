@@ -7,8 +7,10 @@
 //          events discarded as warm-up; beside an empty window ("none") for
 //          the clock's own cost;
 //   whole day: every event applied untimed, as events a second.
-// And the memory the book holds at the end of the day (resident growth from
-// before it was built). The events are copied first into memory taken after
+// And the most memory the book held over the day: resident memory read every
+// million events in the timed pass (between calls, outside every window), its
+// peak less what was resident before the book was built (the fast books'
+// tables are allocated and faulted in at construction, so they count whole). The events are copied first into memory taken after
 // the harness binds memory to CPU 2's node, so their placement is known.
 // Run JSON through lockfree-ipc's harness. Design: docs/design/002-order-book.md
 //
@@ -60,7 +62,7 @@ std::size_t resident_kb() {
 struct result {
     std::string name, refs, levels;
     std::vector<hist> h = std::vector<hist>(types);
-    double seconds = 0, events_per_s = 0, resident_mb = 0;
+    double seconds = 0, events_per_s = 0, peak_resident_mb = 0;
     std::size_t peak_orders = 0, peak_levels = 0;
     bool clean = true;  // nothing refused in either pass
 };
@@ -72,8 +74,11 @@ result measure(const std::string& name, const char* refs, const char* levels, st
     r.refs = refs;
     r.levels = levels;
     {
+        const std::size_t before = resident_kb();
+        std::size_t peak = before;
         auto b = make();
         for (std::size_t i = 0; i < ev.size(); ++i) {
+            if (i % 1'000'000 == 0) peak = std::max(peak, resident_kb());
             const ticks t0 = start();
             const applied a = b->apply(ev[i]);
             const ticks t1 = stop();
@@ -85,20 +90,20 @@ result measure(const std::string& name, const char* refs, const char* levels, st
                 r.h[0].record(t1 - t0);
             }
         }
+        peak = std::max(peak, resident_kb());
+        r.peak_resident_mb = static_cast<double>(peak - before) / 1024.0;
     }
-    const std::size_t before = resident_kb();
     auto b = make();
     const auto w0 = std::chrono::steady_clock::now();
     for (const event& e : ev) r.clean &= b->apply(e).bad == bad_event::none;
     const auto w1 = std::chrono::steady_clock::now();
     r.seconds = std::chrono::duration<double>(w1 - w0).count();
     r.events_per_s = static_cast<double>(ev.size()) / r.seconds;
-    r.resident_mb = static_cast<double>(resident_kb() - std::min(before, resident_kb())) / 1024.0;
     if constexpr (requires { b->peak_orders(); }) {
         r.peak_orders = b->peak_orders();
         r.peak_levels = b->peak_levels();
     }
-    std::printf("%-45s %8.2f M events/s  %7.1f s  %8.0f MB%s\n", name.c_str(), r.events_per_s / 1e6, r.seconds, r.resident_mb,
+    std::printf("%-45s %8.2f M events/s  %7.1f s  %8.0f MB%s\n", name.c_str(), r.events_per_s / 1e6, r.seconds, r.peak_resident_mb,
                 r.clean ? "" : "  REFUSED SOME");
     std::fflush(stdout);
     return r;
@@ -187,7 +192,7 @@ int main(int argc, char** argv) {
         run.w.member("nothing_refused", r.clean);
         run.w.member("events_per_s", r.events_per_s);
         run.w.member("seconds", r.seconds);
-        run.w.member("resident_mb", r.resident_mb);
+        run.w.member("peak_resident_mb", r.peak_resident_mb);
         run.w.member("peak_orders", static_cast<std::uint64_t>(r.peak_orders));
         run.w.member("peak_levels", static_cast<std::uint64_t>(r.peak_levels));
         run.w.key("types");

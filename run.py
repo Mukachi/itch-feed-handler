@@ -109,7 +109,7 @@ def book_rows(lf, runs):
         all_ = [next(t for t in b["types"] if t["type"] == "all") for b in bs]
         rows.append([label(bs[0]), lf.rng([b["events_per_s"] / 1e6 for b in bs], lambda v: f"{v:.2f}")]
                     + [lf.rng([t[f] for t in all_]) for f in ("p50_ns", "p99_ns", "p999_ns", "max_ns")]
-                    + [lf.rng([b["resident_mb"] for b in bs], lambda v: f"{v:,.0f}")])
+                    + [lf.rng([b["peak_resident_mb"] for b in bs], lambda v: f"{v:,.0f}")])
     return rows
 
 
@@ -133,10 +133,11 @@ def book_section(lf, note, runs):
             "applied in feed order on one pinned CPU (CPU 2) by each book in turn, every book fresh for each of two passes. "
             "Events a second: the whole day applied untimed. Per event: each apply timed between start() and stop(), "
             f"unsubtracted (the clock's own cost, an empty window, is {none} ns at p50), into a histogram, the first "
-            f"{b0['warmup_discarded']:,} events discarded as warm-up. Memory: the book's resident growth at the end of the "
-            "day (the fast books' tables are allocated and faulted in at the start). The events are copied into memory "
+            f"{b0['warmup_discarded']:,} events discarded as warm-up. Peak MB: the most resident memory the book added over "
+            "the day, read every million events between calls (the fast books' tables are allocated and faulted in at "
+            "construction, so they count whole). The events are copied into memory "
             f"bound to the measured CPU's node first. {len(runs)} runs; ranges over them.", "",
-            lf.table(["Book", "M events/s", "p50", "p99", "p99.9", "max", "Resident MB"], book_rows(lf, runs)), "",
+            lf.table(["Book", "M events/s", "p50", "p99", "p99.9", "max", "Peak MB"], book_rows(lf, runs)), "",
             "By event type (p99.9 left out where fewer than ten events lie above it):", "",
             lf.table(["Book", "Event", "Events", "p50", "p99", "p99.9"], type_rows(lf, runs)), ""]
 
@@ -158,7 +159,7 @@ def readme_blocks(lf, sets):
     if "book" not in sets:
         return {"book-summary": "Order book figures: not yet measured (design note 002).\n"}
     runs = sets["book"][1]
-    return {"book-summary": lf.table(["Book", "M events/s", "p50", "p99", "p99.9", "max", "Resident MB"], book_rows(lf, runs))
+    return {"book-summary": lf.table(["Book", "M events/s", "p50", "p99", "p99.9", "max", "Peak MB"], book_rows(lf, runs))
             + f"\n\nThe sample day's {runs[0][1]['book']['events']:,} events, one CPU, ns per event, range over "
               f"{len(runs)} runs. By event type, the method and the conditions: [RESULTS.md](RESULTS.md).\n"}
 

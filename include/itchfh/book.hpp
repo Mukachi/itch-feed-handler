@@ -253,4 +253,8 @@ private:
     std::size_t live_orders_ = 0, live_levels_ = 0, peak_orders_ = 0, peak_levels_ = 0;
 };
 
+// The default (note 002, D1 and D2, chosen from the measured figures): the
+// direct array, and sorted arrays of levels.
+using default_book = book<ref_direct, levels_sorted>;
+
 }  // namespace itchfh
