@@ -143,7 +143,7 @@ beside the others.
 - [ ] The repo's build: CMake, warnings as errors, `lockfree-ipc` fetched at a pinned commit,
       CTest; CI as the gateway's (x64, TSan, ASan/UBSan, arm64)
 - [ ] The sample day fetched by a script, size and SHA-256 checked (note 001)
-- [ ] D7: the extraction tool and the event file; counts of each event type
+- [x] D7: the extraction tool and the event file; counts of each event type (Review)
 - [x] D1, D4, D6 from the data: reference-number density, peak live orders, instruments, levels,
       locked and crossed books; recorded here before the code (Review)
 - [ ] D6: explain the 458 crossed books in state `T`
@@ -158,3 +158,4 @@ beside the others.
 |---|---|---|
 | 2026-10-25 | Draft | Written for review from TotalView-ITCH 5.0, sections 1.3 to 1.5 (read today: the order messages, and that `P`, `Q` and `B` do not change the displayed book). **The sample day, in figures** (30 January 2020, SHA-256 `8f5399155242f8d84338c36fdd78a47c0b0aa3df5707829b20c5158c258364c6`, 5,597,158,940 bytes as listed; read once by a throwaway program outside the repo, a plain map-based book, 152 s for the day): 423,285,709 messages, 12.95 GB uncompressed. Order events: Add 184,735,355 (`A`) and 1,875,350 (`F`), Delete 180,285,101, Replace 36,777,372, Executed 8,415,610, Cancel 4,990,972, Executed with Price 139,474. Every Execute, Cancel, Delete and Replace found its order (none unknown), and none was live at the end. Other types: `I` 4,025,192, `P` 1,779,727, `L` 216,802, `Q` 17,835, `Y` 9,068, `H` 8,921, `R` 8,916, `S` 6, `J` 5, `K` 2, `V` 1. Reference numbers, peaks and locked and crossed books: in D1, D4 and D6 |
 | 2026-10-25 | Agreed | Approved by Shep, every decision as proposed (option A each): D1 and D2 three ways each, chosen from the figures; D3 queue position kept; D4 fixed capacity, pre-faulted, unreliable rather than a crash when full; D5 bad events counted and marking the book unreliable; D6 locked or crossed only outside state `T`, once the 458 are explained; D7 an extraction tool and event file until the decoder exists |
+| 2026-10-25 | Agreed (task) | **D7 built.** `include/itchfh/event.hpp` (the book's input: one 40-byte record per event; add, executed, executed with price, cancel, delete, replace, and trading state for D6), `include/itchfh/event_file.hpp` (a 64-byte header, then the records, mapped to read), `tools/extract_events.cpp` (each message's length checked against the specification's). The sample day: 417,228,155 events from 423,285,709 messages in 64 s, none of the wrong length, `data/01302020.events` 16.7 GB (ignored). Its counts equal, type by type, those of the independent throwaway reading earlier in this Review |

@@ -60,3 +60,7 @@ foreach(t ${ITCHFH_TESTS})
   target_link_libraries(${t} PRIVATE itchfh lfipc Threads::Threads)
   add_test(NAME ${t} COMMAND ${t})
 endforeach()
+
+# The extraction tool of note 002, D7 (not part of the handler).
+add_executable(extract_events tools/extract_events.cpp)
+target_link_libraries(extract_events PRIVATE itchfh)
