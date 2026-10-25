@@ -54,12 +54,19 @@ target_compile_definitions(lfipc INTERFACE ITCHFH_LFIPC_COMMIT="${ITCHFH_LFIPC_C
 add_dependencies(lfipc build_info)
 
 # Tests: plain executables under CTest. Each one added with its component.
-set(ITCHFH_TESTS)
+set(ITCHFH_TESTS reference_book_test)
 foreach(t ${ITCHFH_TESTS})
   add_executable(${t} tests/${t}.cpp)
   target_link_libraries(${t} PRIVATE itchfh lfipc Threads::Threads)
   add_test(NAME ${t} COMMAND ${t})
 endforeach()
+
+# Over the sample day (label `data`: needs data/, so CI leaves it out).
+add_executable(sample_day_test tests/sample_day_test.cpp)
+target_link_libraries(sample_day_test PRIVATE itchfh)
+target_compile_definitions(sample_day_test PRIVATE ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+add_test(NAME sample_day_test COMMAND sample_day_test)
+set_tests_properties(sample_day_test PROPERTIES LABELS data TIMEOUT 7200)
 
 # The extraction tool of note 002, D7 (not part of the handler).
 add_executable(extract_events tools/extract_events.cpp)
