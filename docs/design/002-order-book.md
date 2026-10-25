@@ -96,10 +96,11 @@ flowchart LR
   the offer is not stated in the specification. On the sample day, after 4,821 order events a
   book was crossed and after 19 it was locked. 4,363 of the crossed (90%) and all the locked were
   in instruments halted, paused or in a quotation-only period (Stock Trading Action states `H`,
-  `P`, `Q`), when orders rest without matching; 458 were in instruments trading (`T`), unexplained
-  as yet. *Proposed:* a book may be locked or crossed only outside state `T`; the 458 are explained
-  before the invariant is set (an earlier state change missed, an auction, or an error of ours),
-  and the finding recorded here.
+  `P`, `Q`), when orders rest without matching; 458 were in instruments trading (`T`). *Agreed:*
+  the rule set from what is found. *Found* (Review): all 458 belong to books that became crossed
+  during a halt or pause and were still crossed at the resumption, clearing within 55 to 149
+  events. *The rule:* a book never becomes locked or crossed while its instrument is in state `T`;
+  one crossed when trading resumes may stay so until it clears.
 - **D7. Input for this note's tests and figures, before the decoder exists.** Note 004 builds the
   decoder, after this note. *Proposed:* a small extraction tool, outside the hot path and not
   part of the handler, writes the sample day's order events in sequence into a compact file of
@@ -146,7 +147,7 @@ beside the others.
 - [x] D7: the extraction tool and the event file; counts of each event type (Review)
 - [x] D1, D4, D6 from the data: reference-number density, peak live orders, instruments, levels,
       locked and crossed books; recorded here before the code (Review)
-- [ ] D6: explain the 458 crossed books in state `T`
+- [x] D6: explain the 458 crossed books in state `T` (Review)
 - [ ] The reference book; the invariants; hand-built tests of every event and every bad event
 - [ ] The fast book: D1 A–C, D2 A–C, D3, D4, D5
 - [ ] S1, S2 over the sample day; S4's call-graph check
@@ -159,3 +160,4 @@ beside the others.
 | 2026-10-25 | Draft | Written for review from TotalView-ITCH 5.0, sections 1.3 to 1.5 (read today: the order messages, and that `P`, `Q` and `B` do not change the displayed book). **The sample day, in figures** (30 January 2020, SHA-256 `8f5399155242f8d84338c36fdd78a47c0b0aa3df5707829b20c5158c258364c6`, 5,597,158,940 bytes as listed; read once by a throwaway program outside the repo, a plain map-based book, 152 s for the day): 423,285,709 messages, 12.95 GB uncompressed. Order events: Add 184,735,355 (`A`) and 1,875,350 (`F`), Delete 180,285,101, Replace 36,777,372, Executed 8,415,610, Cancel 4,990,972, Executed with Price 139,474. Every Execute, Cancel, Delete and Replace found its order (none unknown), and none was live at the end. Other types: `I` 4,025,192, `P` 1,779,727, `L` 216,802, `Q` 17,835, `Y` 9,068, `H` 8,921, `R` 8,916, `S` 6, `J` 5, `K` 2, `V` 1. Reference numbers, peaks and locked and crossed books: in D1, D4 and D6 |
 | 2026-10-25 | Agreed | Approved by Shep, every decision as proposed (option A each): D1 and D2 three ways each, chosen from the figures; D3 queue position kept; D4 fixed capacity, pre-faulted, unreliable rather than a crash when full; D5 bad events counted and marking the book unreliable; D6 locked or crossed only outside state `T`, once the 458 are explained; D7 an extraction tool and event file until the decoder exists |
 | 2026-10-25 | Agreed (task) | **D7 built.** `include/itchfh/event.hpp` (the book's input: one 40-byte record per event; add, executed, executed with price, cancel, delete, replace, and trading state for D6), `include/itchfh/event_file.hpp` (a 64-byte header, then the records, mapped to read), `tools/extract_events.cpp` (each message's length checked against the specification's). The sample day: 417,228,155 events from 423,285,709 messages in 64 s, none of the wrong length, `data/01302020.events` 16.7 GB (ignored). Its counts equal, type by type, those of the independent throwaway reading earlier in this Review |
+| 2026-10-25 | Agreed (D6) | **The 458 crossed books in state `T`, explained** (a throwaway program over the event file, a plain map-based book, outside the repo). Counted as episodes (crossed after an event, until no longer), the day has 10, and every one began while its instrument was halted (6) or paused (4); none began in `T`. Five uncrossed before the resumption; five were still crossed when the Stock Trading Action said `T`, and cleared 55, 55, 93, 111 and 149 events later (the reopening's executions and deletes): 463 events, of which 458 left the book crossed and the last five uncrossed it. The 19 locked moments were all in `P`. **D6's rule:** a book never becomes locked or crossed while its instrument is in state `T`; one crossed when trading resumes may remain so until it clears. An invariant in the tests |
