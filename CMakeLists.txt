@@ -54,12 +54,22 @@ target_compile_definitions(lfipc INTERFACE ITCHFH_LFIPC_COMMIT="${ITCHFH_LFIPC_C
 add_dependencies(lfipc build_info)
 
 # Tests: plain executables under CTest. Each one added with its component.
-set(ITCHFH_TESTS reference_book_test)
+set(ITCHFH_TESTS reference_book_test book_test)
 foreach(t ${ITCHFH_TESTS})
   add_executable(${t} tests/${t}.cpp)
   target_link_libraries(${t} PRIVATE itchfh lfipc Threads::Threads)
   add_test(NAME ${t} COMMAND ${t})
 endforeach()
+
+# S4 of note 002: applying an event allocates nothing and makes no system call,
+# checked in the compiled code (not under sanitizers, which add calls).
+add_executable(hot_path_subject tests/hot_path_subject.cpp)
+target_link_libraries(hot_path_subject PRIVATE itchfh)
+if(CMAKE_OBJDUMP AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64" AND NOT CMAKE_CXX_FLAGS MATCHES "-fsanitize")
+  add_test(NAME check_hot_path
+           COMMAND Python3::Interpreter -I ${CMAKE_SOURCE_DIR}/tests/check_hot_path.py
+                   ${CMAKE_OBJDUMP} $<TARGET_FILE:hot_path_subject>)
+endif()
 
 # Over the sample day (label `data`: needs data/, so CI leaves it out).
 add_executable(sample_day_test tests/sample_day_test.cpp)
@@ -68,6 +78,16 @@ target_compile_definitions(sample_day_test PRIVATE ITCHFH_DATA_DIR="${CMAKE_SOUR
 add_test(NAME sample_day_test COMMAND sample_day_test)
 set_tests_properties(sample_day_test PROPERTIES LABELS data TIMEOUT 7200)
 
+# The benchmark (note 002, S5): writes into results/ only in bench mode.
+add_executable(book_bench bench/book_bench.cpp)
+target_link_libraries(book_bench PRIVATE itchfh lfipc Threads::Threads)
+target_compile_definitions(book_bench PRIVATE LFIPC_RESULTS_DIR="${CMAKE_SOURCE_DIR}/results"
+                                              ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+
 # The extraction tool of note 002, D7 (not part of the handler).
 add_executable(extract_events tools/extract_events.cpp)
 target_link_libraries(extract_events PRIVATE itchfh)
+
+# One number everywhere: a stale RESULTS.md or README figure fails the suite.
+add_test(NAME report_check COMMAND Python3::Interpreter -I ${CMAKE_SOURCE_DIR}/run.py report --check
+                                  --lockfree-ipc ${lockfree_ipc_SOURCE_DIR})
