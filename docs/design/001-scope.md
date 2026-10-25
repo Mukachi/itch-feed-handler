@@ -47,9 +47,9 @@ It does not:
 
 - send orders, run strategies or keep positions: observation is kept apart from execution. That
   is the integration repo's (ITCH in, queue, pre-trade risk, FIX out);
-- handle other feeds now: LSE MITCH's specification and data could not be confirmed as public, so
-  results on it could not be reproduced; the book is written so a second feed could be added
-  behind it later;
+- handle other feeds now: LSE MITCH's specification is published (MIT303), but its data is
+  licensed, with no public sample, so results on it could not be reproduced; the book is written
+  so a second feed could be added behind it later;
 - use kernel bypass or FPGAs: dev-lnx01 has neither. The kernel UDP path is measured and its
   floor stated;
 - connect to Nasdaq: we have no feed. The live path runs against our own MoldUDP64 sender
@@ -198,4 +198,4 @@ The repo as a whole, checked as the notes reach Measured:
 
 | Date | Stage | Finding |
 |---|---|---|
-| 2026-10-25 | Draft | Written for review from Shep's overview of the engine (its twelve components, principles and discussion order kept; one line referring to an unrelated system left out, as Shep asked). Checked today: the TotalView-ITCH 5.0 specification (36 pages, last revised 28 April 2023), MoldUDP64 V1.00 and SoupBinTCP 3.00 download from nasdaqtrader.com; the GLIMPSE 5.0 link redirects to a not-found page; eight full sample days are listed at `emi.nasdaq.com/ITCH/Nasdaq ITCH/`, 30 January 2020's 5.6 GB compressed. Decided with Shep before drafting: Nasdaq TotalView-ITCH 5.0 (over LSE MITCH, whose specification and data could not be confirmed as public); all twelve components in scope, recording and monitoring kept minimal; repo name `itch-feed-handler` |
+| 2026-10-25 | Draft | Written for review from Shep's overview of the engine (its twelve components, principles and discussion order kept; one line referring to an unrelated system left out, as Shep asked). Checked today: the TotalView-ITCH 5.0 specification (36 pages, last revised 28 April 2023), MoldUDP64 V1.00 and SoupBinTCP 3.00 download from nasdaqtrader.com; the GLIMPSE 5.0 link redirects to a not-found page; eight full sample days are listed at `emi.nasdaq.com/ITCH/Nasdaq ITCH/`, 30 January 2020's 5.6 GB compressed. Decided with Shep before drafting: Nasdaq TotalView-ITCH 5.0 (over LSE MITCH: its specification, MIT303, is published, but its data is licensed and has no public sample, so results could not be reproduced; corrected from "could not be confirmed as public" after Shep's check); all twelve components in scope, recording and monitoring kept minimal; repo name `itch-feed-handler` |
