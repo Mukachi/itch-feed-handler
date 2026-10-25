@@ -47,7 +47,8 @@ It does not:
 
 - send orders, run strategies or keep positions: observation is kept apart from execution. That
   is the integration repo's (ITCH in, queue, pre-trade risk, FIX out);
-- handle other feeds now: LSE MITCH's specification is published (MIT303), but its data is
+- handle other feeds now: the London Stock Exchange's specifications are published (Level 2-MITCH,
+  MIT303, and the Group Ticker Plant that improves on it, GTP 001 and 002), but its data is
   licensed, with no public sample, so results on it could not be reproduced; the book is written
   so a second feed could be added behind it later;
 - use kernel bypass or FPGAs: dev-lnx01 has neither. The kernel UDP path is measured and its
@@ -61,13 +62,17 @@ It does not:
 
 - *Nasdaq TotalView-ITCH 5.0* specification, nasdaqtrader.com, last revised 28 April 2023;
 - *MoldUDP64 Protocol Specification* V1.00, nasdaqtrader.com;
-- *SoupBinTCP* 3.00, nasdaqtrader.com, for the TCP form, if a note needs it;
+- *SoupBinTCP* 3.00, nasdaqtrader.com, the TCP transport GLIMPSE runs over;
+- *Nasdaq GLIMPSE 5.0*, nasdaqtrader.com, last revised 22 August 2024: the snapshot service;
 - Nasdaq's sample data: eight full trading days in TotalView-ITCH 5.0 at
   `emi.nasdaq.com/ITCH/Nasdaq ITCH/` (one is 30 January 2020, 5.6 GB compressed). They're fetched
   by a script into the ignored `data/`, their SHA-256 recorded and checked, and never committed.
 
-Nasdaq's snapshot service, GLIMPSE, is not used: its specification link no longer resolves, and
-we could not connect to it anyway. Snapshots are our own format.
+**Snapshots, as Nasdaq offers them.** GLIMPSE sends, over SoupBinTCP, the day's directory and
+trading-status messages and an Add Order for every displayed order resting at the time, all in
+TotalView-ITCH's own formats, then an End of Snapshot message giving the ITCH sequence number to
+resume the live feed from. We cannot connect to Nasdaq's, so the snapshot server is our own,
+speaking GLIMPSE 5.0, built from the recorded day (D4).
 
 **What the feed gives, and what it doesn't.** ITCH is order by order. Every message carries the
 instrument's Stock Locate code (a small integer, assigned each day by the Stock Directory message,
@@ -150,8 +155,11 @@ generator, environment, noise floor, `run.py` report), fetched by CMake at a pin
   the best bid and offer and the changed level, and in full depth at checkpoints; invariants
   throughout (no negative quantity; no order executed or cancelled beyond its shares; a crossed
   book only where the exchange's own state allows it, which the order book note sets out).
-- **D4. Snapshot format.** *Proposed:* our own: the book state and the feed's sequence number,
-  written at chosen points. A snapshot restores the books, not missed trades, and says so.
+- **D4. Snapshot format.** *Proposed:* GLIMPSE 5.0 over SoupBinTCP, served by our own snapshot
+  server: a public protocol, and the books rebuilt from it by the same decoder and book code as
+  the live feed. A snapshot restores the books, not missed trades, and says so. *Alternative:* a
+  format of our own (the book state and the sequence number): simpler, but nothing anyone else
+  speaks.
 
 **Component notes, in order** (Shep's discussion order; each a Draft for agreement before code):
 
@@ -199,3 +207,4 @@ The repo as a whole, checked as the notes reach Measured:
 | Date | Stage | Finding |
 |---|---|---|
 | 2026-10-25 | Draft | Written for review from Shep's overview of the engine (its twelve components, principles and discussion order kept; one line referring to an unrelated system left out, as Shep asked). Checked today: the TotalView-ITCH 5.0 specification (36 pages, last revised 28 April 2023), MoldUDP64 V1.00 and SoupBinTCP 3.00 download from nasdaqtrader.com; the GLIMPSE 5.0 link redirects to a not-found page; eight full sample days are listed at `emi.nasdaq.com/ITCH/Nasdaq ITCH/`, 30 January 2020's 5.6 GB compressed. Decided with Shep before drafting: Nasdaq TotalView-ITCH 5.0 (over LSE MITCH: its specification, MIT303, is published, but its data is licensed and has no public sample, so results could not be reproduced; corrected from "could not be confirmed as public" after Shep's check); all twelve components in scope, recording and monitoring kept minimal; repo name `itch-feed-handler` |
+| 2026-10-25 | Draft (revised) | From Shep's checks: the GLIMPSE 5.0 specification is public (`NQGlimpseSpecification.pdf`, 32 pages, revised 22 August 2024; the earlier "not found" was a wrong address of ours), so D4 now proposes it in place of a format of our own; the London Stock Exchange's Group Ticker Plant (GTP 001 and 002) named beside MITCH as its published specifications. GLIMPSE is Nasdaq's, not the LSE's, and was not replaced by GTP, contrary to the text Shep was given |
