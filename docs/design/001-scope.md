@@ -1,6 +1,6 @@
 # 001 — Scope and plan
 
-**Status:** Draft · **Updated:** 2026-10-25
+**Status:** Agreed · **Updated:** 2026-10-25
 
 ## Proposal
 
@@ -208,3 +208,4 @@ The repo as a whole, checked as the notes reach Measured:
 |---|---|---|
 | 2026-10-25 | Draft | Written for review from Shep's overview of the engine (its twelve components, principles and discussion order kept; one line referring to an unrelated system left out, as Shep asked). Checked today: the TotalView-ITCH 5.0 specification (36 pages, last revised 28 April 2023), MoldUDP64 V1.00 and SoupBinTCP 3.00 download from nasdaqtrader.com; the GLIMPSE 5.0 link redirects to a not-found page; eight full sample days are listed at `emi.nasdaq.com/ITCH/Nasdaq ITCH/`, 30 January 2020's 5.6 GB compressed. Decided with Shep before drafting: Nasdaq TotalView-ITCH 5.0 (over LSE MITCH: its specification, MIT303, is published, but its data is licensed and has no public sample, so results could not be reproduced; corrected from "could not be confirmed as public" after Shep's check); all twelve components in scope, recording and monitoring kept minimal; repo name `itch-feed-handler` |
 | 2026-10-25 | Draft (revised) | From Shep's checks: the GLIMPSE 5.0 specification is public (`NQGlimpseSpecification.pdf`, 32 pages, revised 22 August 2024; the earlier "not found" was a wrong address of ours), so D4 now proposes it in place of a format of our own; the London Stock Exchange's Group Ticker Plant (GTP 001 and 002) named beside MITCH as its published specifications. GLIMPSE is Nasdaq's, not the LSE's, and was not replaced by GTP, contrary to the text Shep was given |
+| 2026-10-25 | Agreed | Approved by Shep, every decision as proposed: D1 MoldUDP64 multicast with our own sender and re-request server; D2 Nasdaq's sample day of 30 January 2020 for published figures, the other days as checks, hand-built files for unit tests and CI; D3 a deliberately simple reference book as oracle and baseline, compared after every message and in full at checkpoints, with invariants; D4 GLIMPSE 5.0 over SoupBinTCP from our own snapshot server. Notes 002–010 in the order above |
