@@ -10,7 +10,11 @@
 // And the most memory the book held over the day: resident memory read every
 // million events in the timed pass (between calls, outside every window), its
 // peak less what was resident before the book was built (the fast books'
-// tables are allocated and faulted in at construction, so they count whole). The events are copied first into memory taken after
+// tables are allocated and faulted in at construction, so they count whole).
+// Before every pass the heap is handed back to the kernel (malloc_trim), so
+// each book starts as in a fresh process: without it, a book on standard
+// containers reused the heap an earlier book freed, its growth hidden and its
+// page faults never taken (note 002, Review). The events are copied first into memory taken after
 // the harness binds memory to CPU 2's node, so their placement is known.
 // Run JSON through lockfree-ipc's harness. Design: docs/design/002-order-book.md
 //
@@ -25,6 +29,8 @@
 #include <lfipc/bench/histogram.hpp>
 #include <lfipc/bench/noise_block.hpp>
 #include <lfipc/bench/run_file.hpp>
+
+#include <malloc.h>
 
 #include <chrono>
 #include <cstdio>
@@ -74,6 +80,7 @@ result measure(const std::string& name, const char* refs, const char* levels, st
     r.refs = refs;
     r.levels = levels;
     {
+        ::malloc_trim(0);
         const std::size_t before = resident_kb();
         std::size_t peak = before;
         auto b = make();
@@ -93,6 +100,7 @@ result measure(const std::string& name, const char* refs, const char* levels, st
         peak = std::max(peak, resident_kb());
         r.peak_resident_mb = static_cast<double>(peak - before) / 1024.0;
     }
+    ::malloc_trim(0);
     auto b = make();
     const auto w0 = std::chrono::steady_clock::now();
     for (const event& e : ev) r.clean &= b->apply(e).bad == bad_event::none;
