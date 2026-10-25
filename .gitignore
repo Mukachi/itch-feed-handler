@@ -1,0 +1,10 @@
+build/
+build-*/
+.cache/
+__pycache__/
+*.o
+*.a
+*.so
+compile_commands.json
+perf.data*
+data/
