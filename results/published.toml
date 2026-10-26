@@ -1,0 +1,5 @@
+# Runs published in RESULTS.md and the README (python run.py report).
+
+[book]
+note = "002"
+runs = ["book-dev-lnx01-20261025T222227Z.json", "book-dev-lnx01-20261025T230038Z.json", "book-dev-lnx01-20261025T233848Z.json"]

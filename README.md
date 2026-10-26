@@ -7,5 +7,18 @@ data, rebuilds its order books and publishes them, marked as current or not. Wor
 ## Results
 
 <!-- results:book-summary -->
-Order book figures: not yet measured (design note 002).
+| Book | M events/s | p50 | p99 | p99.9 | max | Peak MB |
+|---|---|---|---|---|---|---|
+| reference book | 1.83 | 583–587 | 1,561–1,572 | 2,206–2,220 | 171,010.1 µs–171,524.7 µs | 231 |
+| refs A: unordered_map, levels A: std::map | 2.96–2.97 | 318–319 | 1,130–1,132 | 1,620–1,621 | 1,353.3 µs–1,366.6 µs | 299 |
+| refs A: unordered_map, levels B: sorted array | 3.91–3.93 | 260 | 894–896 | 1,246–1,250 | 663.6 µs–668.2 µs | 387 |
+| refs A: unordered_map, levels C: price window | 4.11–4.12 | 254–260 | 872–877 | 1,226–1,234 | 659.8 µs–663.0 µs | 653 |
+| refs B: open addressing, levels A: std::map | 4.23–4.26 | 208–209 | 803–809 | 1,228–1,239 | 402.6 µs–409.0 µs | 337 |
+| refs B: open addressing, levels B: sorted array | 6.33–6.35 | 174 | 561 | 820–821 | 17.6 µs–41.4 µs | 425 |
+| refs B: open addressing, levels C: price window | 6.64–6.67 | 168 | 546–548 | 808–811 | 16.9 µs–17.7 µs | 691 |
+| refs C: direct array, levels A: std::map | 5.24–5.28 | 167 | 702–709 | 1,097–1,103 | 393.0 µs–398.1 µs | 2,385 |
+| refs C: direct array, levels B: sorted array | 8.94–8.98 | 138 | 466–467 | 731–732 | 17.0 µs–18.0 µs | 2,473 |
+| refs C: direct array, levels C: price window | 9.54–9.62 | 136–137 | 458–461 | 721–723 | 17.2 µs–17.4 µs | 2,739 |
+
+The sample day's 417,228,155 events, one CPU, ns per event, range over 3 runs. By event type, the method and the conditions: [RESULTS.md](RESULTS.md).
 <!-- /results -->
