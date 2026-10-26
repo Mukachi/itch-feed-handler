@@ -12,8 +12,8 @@
 //               positions spread over the day.
 // The amendment to D9 (Review): the lossy link's times are simulated, so what
 // is measured is the sequencer's own work on a gap.
-// Hardware counters per packet (counters.hpp) over the untimed in-order pass,
-// the held packets and the backlogs of 10,000, with the effective clock (cycles
+// Hardware counters per packet (counters.hpp) over the timed and the untimed
+// in-order passes, the held packets and the backlogs of 10,000, with the effective clock (cycles
 // over wall time), and the process's huge pages: the first three runs came out
 // at two levels, 17-20% apart in everything, with nothing recorded to tell them
 // apart (note 005, Review).
@@ -153,25 +153,30 @@ int main(int argc, char** argv) {
         if (i >= 1'000'000) none.record(t1 - t0);
     }
 
+    const counters hw;
+    if (!hw.ok()) std::fprintf(stderr, "sequencer_bench: hardware counters not all open (perf_event_paranoid above 2?)\n");
+    const std::size_t huge_kb = anon_huge_kb();
+    measured c_in_order, c_held, c_backlog, c_timed;
+
     // In order, timed then untimed.
     hist in_order;
     std::uint64_t messages = 0;
     {
         counting out;
         fh::sequencer<counting> s(out, config());
+        const counters::reading r0 = hw.read();
+        const auto w0 = std::chrono::steady_clock::now();
         for (std::size_t i = 0; i < pk.size(); ++i) {
             const ticks t0 = start();
             s.on_packet(pk.p(i), pk.n(i), 0);
             const ticks t1 = stop();
             if (i >= warmup) in_order.record(t1 - t0);
         }
+        const auto w1 = std::chrono::steady_clock::now();
+        c_timed = {hw.read() - r0, std::chrono::duration<double, std::nano>(w1 - w0).count(), pk.size()};
         messages = out.messages;
     }
     double packets_per_s = 0, messages_per_s = 0;
-    const counters hw;
-    if (!hw.ok()) std::fprintf(stderr, "sequencer_bench: hardware counters not all open (perf_event_paranoid above 2?)\n");
-    const std::size_t huge_kb = anon_huge_kb();
-    measured c_in_order, c_held, c_backlog;
     {
         counting out;
         fh::sequencer<counting> s(out, config());
@@ -261,6 +266,11 @@ int main(int argc, char** argv) {
     run.w.key("in_order");
     run.w.begin_object();
     write_hist(in_order);
+    // The distribution's shape, 5% apart: whether the median sits between two humps.
+    run.w.key("percentiles_ns");
+    run.w.begin_inline_array();
+    for (int q = 5; q <= 95; q += 5) run.w.value(ns(in_order.percentile(q)));
+    run.w.end_array();
     run.w.end_object();
     run.w.key("held");
     run.w.begin_object();
@@ -275,7 +285,8 @@ int main(int argc, char** argv) {
     for (int k = 0; k < counters::n; ++k)
         if (hw.open(k)) run.w.value(std::string(counters::names[k]));
     run.w.end_array();
-    for (const auto& [name, m] : {std::pair<const char*, const measured*>{"in_order", &c_in_order}, {"held", &c_held}, {"backlog_10000", &c_backlog}}) {
+    for (const auto& [name, m] : {std::pair<const char*, const measured*>{"in_order_timed", &c_timed}, {"in_order", &c_in_order}, {"held", &c_held},
+                                 {"backlog_10000", &c_backlog}}) {
         run.w.key(name);
         run.w.begin_object();
         run.w.member("packets", m->packets);
