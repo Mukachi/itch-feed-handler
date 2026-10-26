@@ -14,7 +14,8 @@
 // is measured is the sequencer's own work on a gap.
 // Hardware counters per packet (counters.hpp) over the timed and the untimed
 // in-order passes, the held packets and the backlogs of 10,000, with the effective clock (cycles
-// over wall time), and the process's huge pages: the first three runs came out
+// over wall time), and the process's huge pages (the packets and the hold now
+// in them: note 005's amendment to D4): the first three runs came out
 // at two levels, 17-20% apart in everything, with nothing recorded to tell them
 // apart (note 005, Review).
 // Run JSON through lockfree-ipc's harness. Design: docs/design/005-sequencing-recovery.md
@@ -132,7 +133,7 @@ int main(int argc, char** argv) {
         write_clock_block(run.w, clk);
         return run.finish(false, "sequencer_bench");
     }
-    packets pk{fh::zeroed<unsigned char>(std::size_t{16} << 30, true), {}};
+    packets pk{fh::zeroed_huge<unsigned char>(std::size_t{16} << 30, true), {}};  // huge pages, as the hold (note 005)
     pk.at.reserve(20'000'000);
     {
         std::uint64_t at = 0;
@@ -156,6 +157,7 @@ int main(int argc, char** argv) {
     const counters hw;
     if (!hw.ok()) std::fprintf(stderr, "sequencer_bench: hardware counters not all open (perf_event_paranoid above 2?)\n");
     const std::size_t huge_kb = anon_huge_kb();
+    std::size_t huge_with_hold_kb = 0;
     measured c_in_order, c_held, c_backlog, c_timed;
 
     // In order, timed then untimed.
@@ -164,6 +166,7 @@ int main(int argc, char** argv) {
     {
         counting out;
         fh::sequencer<counting> s(out, config());
+        huge_with_hold_kb = anon_huge_kb();
         const counters::reading r0 = hw.read();
         const auto w0 = std::chrono::steady_clock::now();
         for (std::size_t i = 0; i < pk.size(); ++i) {
@@ -277,6 +280,7 @@ int main(int argc, char** argv) {
     write_hist(held);
     run.w.end_object();
     run.w.member("anon_huge_pages_kb", static_cast<std::uint64_t>(huge_kb));
+    run.w.member("anon_huge_pages_kb_with_hold", static_cast<std::uint64_t>(huge_with_hold_kb));
     run.w.member("transparent_hugepage", thp_mode());
     run.w.key("counters");
     run.w.begin_object();

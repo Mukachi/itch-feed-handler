@@ -39,6 +39,8 @@ struct sequencer_config {
     // a first packet beyond it is a gap, not a new beginning.
     std::uint64_t first_expected = 1;
     bool prefault = true;
+    // The hold in huge pages (note 005's amendment to D4).
+    bool huge_pages = true;
 };
 
 struct sequencer_counts {
@@ -51,7 +53,8 @@ template <class Out>
 class sequencer {
 public:
     sequencer(Out& out, const sequencer_config& c = {})
-        : out_(out), cfg_(c), slots_(c.hold_bytes / c.slot_bytes), mem_(zeroed<unsigned char>(slots_ * c.slot_bytes, c.prefault)),
+        : out_(out), cfg_(c), slots_(c.hold_bytes / c.slot_bytes),
+          mem_(c.huge_pages ? zeroed_huge<unsigned char>(slots_ * c.slot_bytes, c.prefault) : zeroed<unsigned char>(slots_ * c.slot_bytes, c.prefault)),
           slot_len_(zeroed<std::uint32_t>(slots_, c.prefault)), heap_(zeroed<entry>(slots_, c.prefault)),
           free_(zeroed<std::uint32_t>(slots_, c.prefault)) {
         for (std::size_t i = 0; i < slots_; ++i) free_[i] = static_cast<std::uint32_t>(slots_ - 1 - i);
