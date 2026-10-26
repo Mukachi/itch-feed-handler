@@ -37,6 +37,7 @@ public:
         }
         if (m.type == 'V') {
             market_.mwcb = m.V;
+            market_.mwcb_not_since_snapshot = false;
             sink_.market(m);
             return;
         }
@@ -60,11 +61,14 @@ public:
             }
             status_[it->second].ipo = m.K;
             status_[it->second].has |= 2;
+            status_[it->second].not_since_snapshot &= ~snapshot_ipo;
             sink_.status(it->second, status_field::ipo_quoting);
             return;
         }
         if (!entries_.contains(l)) ++counts_.no_directory;
+        const bool fresh = !status_.contains(l);
         instrument_status& st = status_[l];
+        if (fresh && restored_) st.not_since_snapshot = snapshot_all;
         switch (m.type) {
             case 'H': {
                 event e{};
@@ -85,11 +89,13 @@ public:
             case 'L':
                 participants_[{l, std::string(m.L.participant.begin(), m.L.participant.end())}] = {
                     m.L.primary_market_maker, m.L.market_maker_mode, m.L.participant_state};
+                    st.not_since_snapshot &= ~snapshot_participants;
                 sink_.status(l, status_field::participant);
                 return;
             case 'J':
                 st.luld = m.J;
                 st.has |= 1;
+                st.not_since_snapshot &= ~snapshot_luld;
                 sink_.status(l, status_field::luld_collar);
                 return;
             case 'h': {
@@ -110,11 +116,13 @@ public:
             case 'O':
                 st.dlcr = m.O;
                 st.has |= 4;
+                st.not_since_snapshot &= ~snapshot_dlcr;
                 sink_.status(l, status_field::direct_listing);
                 return;
             case 'I':
                 st.noii = m.I;
                 st.has |= 8;
+                st.not_since_snapshot &= ~snapshot_noii;
                 sink_.imbalance(l, m.I);
                 return;
             case 'A':
@@ -207,6 +215,13 @@ public:
         }
     }
 
+    // Note 006, D5: rebuilt from a snapshot; what it could not restore marked.
+    void mark_restored() {
+        restored_ = true;
+        for (auto& [l, st] : status_) st.not_since_snapshot = snapshot_all;
+        market_.mwcb_not_since_snapshot = true;
+    }
+
     const stock_directory* entry(std::uint16_t l) const {
         const auto it = entries_.find(l);
         return it == entries_.end() ? nullptr : &it->second;
@@ -221,7 +236,9 @@ public:
     }
     instrument_status status_of(std::uint16_t l) const {
         const auto it = status_.find(l);
-        return it == status_.end() ? instrument_status{} : it->second;
+        instrument_status s = it == status_.end() ? instrument_status{} : it->second;
+        if (restored_ && it == status_.end()) s.not_since_snapshot = snapshot_all;
+        return s;
     }
     const participant_view* participant_of(std::uint16_t l, const mpid& p) const {
         const auto it = participants_.find({l, std::string(p.begin(), p.end())});
@@ -260,6 +277,7 @@ private:
     std::map<std::pair<std::uint16_t, std::string>, participant_view> participants_;
     market_state market_;
     handler_counts counts_;
+    bool restored_ = false;
 };
 
 }  // namespace itchfh

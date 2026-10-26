@@ -51,6 +51,15 @@ struct instrument_status {
     direct_listing dlcr{};
     imbalance noii{};
     std::uint8_t has = 0;  // bits: 1 luld, 2 ipo, 4 dlcr, 8 noii
+    // Note 006, D5: after a rebuild from a snapshot, what GLIMPSE could not
+    // restore, until a live message sets it again (trades never: the volume
+    // before the snapshot is not recovered).
+    std::uint8_t not_since_snapshot = 0;  // bits of since_snapshot
+};
+
+enum since_snapshot : std::uint8_t {
+    snapshot_trades = 1, snapshot_luld = 2, snapshot_ipo = 4, snapshot_dlcr = 8, snapshot_noii = 16, snapshot_participants = 32,
+    snapshot_all = 63
 };
 
 struct market_state {
@@ -58,6 +67,7 @@ struct market_state {
     std::uint8_t phases = 0; // how many of O S Q M E C have come, in order
     mwcb_decline mwcb{};
     char mwcb_breached = 0;
+    bool mwcb_not_since_snapshot = false;  // note 006, D5
 };
 
 // S4: edge cases, counted and never fatal.

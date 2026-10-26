@@ -44,19 +44,23 @@ public:
     void luld(std::uint16_t l, const luld_collar& m) {
         of_[l].luld = m;
         of_[l].has |= 1;
+        of_[l].not_since_snapshot &= ~snapshot_luld;
     }
     void ipo(std::uint16_t l, const ipo_quoting& m) {
         of_[l].ipo = m;
         of_[l].has |= 2;
+        of_[l].not_since_snapshot &= ~snapshot_ipo;
     }
     void retail(std::uint16_t l, const retail_interest& m) { of_[l].retail_interest = m.interest_flag; }
     void dlcr(std::uint16_t l, const direct_listing& m) {
         of_[l].dlcr = m;
         of_[l].has |= 4;
+        of_[l].not_since_snapshot &= ~snapshot_dlcr;
     }
     void noii(std::uint16_t l, const imbalance& m) {
         of_[l].noii = m;
         of_[l].has |= 8;
+        of_[l].not_since_snapshot &= ~snapshot_noii;
     }
     // False if the table had no room.
     bool participant(std::uint16_t l, const participant_position& m) {
@@ -64,6 +68,7 @@ public:
         participant_view* p = participants_.get(participant_key(l, m.participant), fresh);
         if (!p) return false;
         *p = {m.primary_market_maker, m.market_maker_mode, m.participant_state};
+        of_[l].not_since_snapshot &= ~snapshot_participants;
         return true;
     }
     // False if the code is not the next of O S Q M E C.
@@ -76,7 +81,15 @@ public:
         }
         return false;
     }
-    void mwcb_decline(const itchfh::mwcb_decline& m) { market_.mwcb = m; }
+    void mwcb_decline(const itchfh::mwcb_decline& m) {
+        market_.mwcb = m;
+        market_.mwcb_not_since_snapshot = false;
+    }
+    // Note 006, D5: rebuilt from a snapshot; every instrument's unrestorable fields marked.
+    void mark_restored() {
+        for (std::size_t l = 0; l < 65'536; ++l) of_[l].not_since_snapshot = snapshot_all;
+        market_.mwcb_not_since_snapshot = true;
+    }
     void mwcb_status(char level) { market_.mwcb_breached = level; }
 
     const instrument_status& of(std::uint16_t l) const { return of_[l]; }

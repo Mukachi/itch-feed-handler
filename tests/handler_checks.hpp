@@ -63,6 +63,7 @@ inline std::string describe(const instrument_status& s) {
     for (char x : s.operational_halt) c(x);
     c(s.retail_interest);
     n(s.has);
+    n(s.not_since_snapshot);
     if (s.has & 1) n(s.luld.reference_price), n(s.luld.upper_price), n(s.luld.lower_price), n(s.luld.extension);
     if (s.has & 2) n(s.ipo.release_time_s), c(s.ipo.release_qualifier), n(s.ipo.ipo_price);
     if (s.has & 4) c(s.dlcr.open_eligibility), n(s.dlcr.min_price), n(s.dlcr.max_price), n(s.dlcr.near_price), n(s.dlcr.near_time),
@@ -74,7 +75,8 @@ inline std::string describe(const instrument_status& s) {
 
 inline std::string describe(const market_state& m) {
     return std::string(1, m.phase ? m.phase : '_') + std::to_string(m.phases) + "/" + std::to_string(m.mwcb.level1) + "/" +
-           std::to_string(m.mwcb.level2) + "/" + std::to_string(m.mwcb.level3) + "/" + std::string(1, m.mwcb_breached ? m.mwcb_breached : '_');
+           std::to_string(m.mwcb.level2) + "/" + std::to_string(m.mwcb.level3) + "/" + std::string(1, m.mwcb_breached ? m.mwcb_breached : '_') +
+           (m.mwcb_not_since_snapshot ? "/not since snapshot" : "");
 }
 
 // Everything the handler holds about one instrument, in one string.

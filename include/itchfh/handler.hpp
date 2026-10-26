@@ -184,6 +184,10 @@ public:
         }
     }
 
+    // Note 006, D5: the state was rebuilt from a snapshot; what it could not
+    // restore is marked until set again.
+    void mark_restored() { status_.mark_restored(); }
+
     // What it holds, in the same terms as the reference handler.
     const stock_directory* entry(std::uint16_t l) const { return directory_.find(l); }
     std::optional<std::uint16_t> locate_of(const symbol& s) const { return directory_.locate_of(s); }
