@@ -105,6 +105,7 @@ struct outcome {
     sender_counts sent;
     std::uint64_t malformed = 0, requests = 0;
     feed_state state = feed_state::waiting;
+    int granted = 0;
 };
 
 outcome run(const world& w, std::uint16_t port, double drop, bool two, bool batch, bool malformed = false, bool overflow = false, bool slow = false) {
@@ -118,6 +119,7 @@ outcome run(const world& w, std::uint16_t port, double drop, bool two, bool batc
         o.books = "receiver: " + why;
         return o;
     }
+    o.granted = rx.granted_buffer();
     rx.set_server("127.0.0.1", static_cast<std::uint16_t>(port + 1));
     udp::sender tx;
     if (!tx.open(ro.group, port, "127.0.0.1", static_cast<std::uint16_t>(port + 1), why)) {
@@ -127,6 +129,7 @@ outcome run(const world& w, std::uint16_t port, double drop, bool two, bool batc
     sender_config sc;
     sc.packets_per_s = overflow ? 1'000'000 : 50'000;
     sc.drop = drop;
+    sc.heartbeat_ns = 100'000'000;  // within the sequencer's 2 s staleness, and quick
     mold_sender s(*w.store, tx, sc);
     std::atomic<bool> stop{false};
     std::thread st([&] {
@@ -191,7 +194,7 @@ void over_loopback(const world& w) {
                   std::string("S1 in small, ") + a.name + (drop ? ", 2% of packets dropped by the sender" : ", nothing dropped") + ": " +
                       std::to_string(o.counts.messages) + " messages handled once over loopback multicast, the books the reference's; " +
                       std::to_string(o.sent.dropped) + " dropped, " + std::to_string(o.requests) + " re-requests, " +
-                      std::to_string(o.sent.answered) + " answered over unicast; kernel drops " + std::to_string(o.counts.kernel_drops) +
+                      std::to_string(o.sent.answered) + " answered over unicast; kernel drops " + std::to_string(o.counts.kernel_drops) + " (buffer " + std::to_string(o.granted / 1024) + " KB)" +
                       (o.books.empty() ? "" : " (" + o.books + ")") + "; state " + std::to_string(static_cast<int>(o.state)));
         }
 }
@@ -238,6 +241,7 @@ void recorded_replay(const world& w) {
     sender_config sc;
     sc.packets_per_s = 50'000;
     sc.drop = 0.02;
+    sc.heartbeat_ns = 100'000'000;
     mold_sender s(*w.store, tx, sc);
     std::atomic<bool> stop{false};
     std::thread st([&] { s.run(stop); });

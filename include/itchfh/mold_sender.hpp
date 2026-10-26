@@ -3,8 +3,9 @@
 // packets a second, or at the day's own pace (each packet sent when its first
 // message's timestamp comes round), sped up by a factor; a chosen share of
 // packets dropped before sending (so recovery runs over a real socket);
-// heartbeats while it has nothing to send, then the end of session for a
-// while; and the re-request server (note 005, D6) answering on unicast from
+// heartbeats while it has nothing to send, then the end of session in their
+// place (the specification: "for a short while in place of Heartbeats";
+// here until stopped, so a receiver that lost the tail still learns of it); and the re-request server (note 005, D6) answering on unicast from
 // the same store, between packets. Busy-polls its CPU.
 // Design: docs/design/007-receiver-framer.md
 #pragma once
@@ -26,7 +27,7 @@ struct sender_config {
     double drop = 0;           // share of packets not sent (their first sending only)
     std::uint64_t seed = 7;
     std::int64_t heartbeat_ns = 1'000'000'000;
-    int end_markers = 5;       // end-of-session packets after the last, a millisecond apart
+    int end_markers = 5;       // end-of-session packets after the last, a millisecond apart, then one a heartbeat
 };
 
 struct sender_counts {
@@ -44,7 +45,8 @@ public:
     mold_sender(const session_store& store, udp::sender& out, const sender_config& c) : store_(store), out_(out), cfg_(c), rng_(c.seed) {}
 
     // Sends the whole session, then the end, answering re-requests throughout,
-    // then keeps answering until `stop` (the receiver may still be recovering).
+    // then keeps sending the end and answering until `stop` (the receiver may
+    // still be recovering).
     void run(const std::atomic<bool>& stop) {
         unsigned char pk[mold::header_size + mold::payload];
         const std::int64_t t0 = monotonic_ns();
@@ -83,7 +85,15 @@ public:
             const std::int64_t until = monotonic_ns() + 1'000'000;
             while (monotonic_ns() < until) serve();
         }
-        while (!stop.load(std::memory_order_relaxed)) serve();
+        std::int64_t last_end = monotonic_ns();
+        while (!stop.load(std::memory_order_relaxed)) {
+            serve();
+            if (const std::int64_t now = monotonic_ns(); now - last_end >= cfg_.heartbeat_ns) {
+                mold::build_marker(pk, store_.session(), store_.count() + 1, mold::end_of_session);
+                out_.send(pk, mold::header_size);
+                last_end = now;
+            }
+        }
     }
     const sender_counts& counts() const { return counts_; }
 
