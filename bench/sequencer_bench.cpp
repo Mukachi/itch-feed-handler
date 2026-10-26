@@ -12,9 +12,16 @@
 //               positions spread over the day.
 // The amendment to D9 (Review): the lossy link's times are simulated, so what
 // is measured is the sequencer's own work on a gap.
+// Hardware counters per packet (counters.hpp) over the untimed in-order pass,
+// the held packets and the backlogs of 10,000, with the effective clock (cycles
+// over wall time), and the process's huge pages: the first three runs came out
+// at two levels, 17-20% apart in everything, with nothing recorded to tell them
+// apart (note 005, Review).
 // Run JSON through lockfree-ipc's harness. Design: docs/design/005-sequencing-recovery.md
 //
 // Usage: sequencer_bench [output.json] [day.gz]
+#include "counters.hpp"
+
 #include <itchfh/memory.hpp>
 #include <itchfh/mold.hpp>
 #include <itchfh/sequencer.hpp>
@@ -29,6 +36,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
+#include <fstream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -59,6 +67,30 @@ struct packets {
     const unsigned char* p(std::size_t i) const { return bytes.get() + at[i]; }
     std::size_t n(std::size_t i) const { return at[i + 1] - at[i]; }
     std::size_t size() const { return at.size() - 1; }
+};
+
+std::size_t anon_huge_kb() {
+    std::ifstream f("/proc/self/smaps_rollup");
+    std::string k;
+    std::size_t v = 0;
+    while (f >> k)
+        if (k == "AnonHugePages:") {
+            f >> v;
+            return v;
+        }
+    return 0;
+}
+std::string thp_mode() {
+    std::ifstream f("/sys/kernel/mm/transparent_hugepage/enabled");
+    std::string all, w;
+    while (f >> w) all += (all.empty() ? "" : " ") + w;
+    return all;
+}
+
+struct measured {
+    counters::reading delta;
+    double ns = 0;
+    std::uint64_t packets = 0;
 };
 
 fh::sequencer_config config() {
@@ -136,12 +168,19 @@ int main(int argc, char** argv) {
         messages = out.messages;
     }
     double packets_per_s = 0, messages_per_s = 0;
+    const counters hw;
+    if (!hw.ok()) std::fprintf(stderr, "sequencer_bench: hardware counters not all open (perf_event_paranoid above 2?)\n");
+    const std::size_t huge_kb = anon_huge_kb();
+    measured c_in_order, c_held, c_backlog;
     {
         counting out;
         fh::sequencer<counting> s(out, config());
+        const counters::reading r0 = hw.read();
         const auto w0 = std::chrono::steady_clock::now();
         for (std::size_t i = 0; i < pk.size(); ++i) s.on_packet(pk.p(i), pk.n(i), 0);
-        const double secs = std::chrono::duration<double>(std::chrono::steady_clock::now() - w0).count();
+        const auto w1 = std::chrono::steady_clock::now();
+        c_in_order = {hw.read() - r0, std::chrono::duration<double, std::nano>(w1 - w0).count(), pk.size()};
+        const double secs = std::chrono::duration<double>(w1 - w0).count();
         packets_per_s = static_cast<double>(pk.size()) / secs;
         messages_per_s = static_cast<double>(out.messages) / secs;
     }
@@ -161,15 +200,33 @@ int main(int argc, char** argv) {
             c.first_expected = fh::mold::read_header(pk.p(gap - 1)).sequence;
             fh::sequencer<counting> s(out, c);
             s.on_packet(pk.p(gap - 1), pk.n(gap - 1), 0);  // in sequence
+            const counters::reading h0 = hw.read();
+            const auto hw0 = std::chrono::steady_clock::now();
             for (std::size_t i = gap + 1; i <= gap + H; ++i) {
                 const ticks t0 = start();
                 s.on_packet(pk.p(i), pk.n(i), 0);  // after the gap: held
                 const ticks t1 = stop();
                 if (b == 3) held.record(t1 - t0);
             }
+            const auto hw1 = std::chrono::steady_clock::now();
+            const counters::reading h1 = hw.read();
             const ticks t0 = start();
             s.on_packet(pk.p(gap), pk.n(gap), 0);  // the missing packet: the backlog delivered
             const ticks t1 = stop();
+            const counters::reading h2 = hw.read();
+            if (b == 3) {
+                const counters::reading dh = h1 - h0, db = h2 - h1;
+                for (int k = 0; k < counters::n; ++k) {
+                    c_held.delta.value[k] += dh.value[k];
+                    c_backlog.delta.value[k] += db.value[k];
+                }
+                c_held.delta.multiplexed |= dh.multiplexed;
+                c_backlog.delta.multiplexed |= db.multiplexed;
+                c_held.ns += std::chrono::duration<double, std::nano>(hw1 - hw0).count();
+                c_backlog.ns += static_cast<double>(t1 - t0) / tpn;
+                c_held.packets += H;
+                c_backlog.packets += H + 1;
+            }
             backlog[b].record(t1 - t0);
             per.push_back((t1 - t0) / static_cast<ticks>(H + 1));
         }
@@ -208,6 +265,27 @@ int main(int argc, char** argv) {
     run.w.key("held");
     run.w.begin_object();
     write_hist(held);
+    run.w.end_object();
+    run.w.member("anon_huge_pages_kb", static_cast<std::uint64_t>(huge_kb));
+    run.w.member("transparent_hugepage", thp_mode());
+    run.w.key("counters");
+    run.w.begin_object();
+    run.w.key("open");
+    run.w.begin_inline_array();
+    for (int k = 0; k < counters::n; ++k)
+        if (hw.open(k)) run.w.value(std::string(counters::names[k]));
+    run.w.end_array();
+    for (const auto& [name, m] : {std::pair<const char*, const measured*>{"in_order", &c_in_order}, {"held", &c_held}, {"backlog_10000", &c_backlog}}) {
+        run.w.key(name);
+        run.w.begin_object();
+        run.w.member("packets", m->packets);
+        run.w.member("multiplexed", m->delta.multiplexed);
+        run.w.member("ghz", m->ns > 0 ? static_cast<double>(m->delta.value[0]) / m->ns : -1.0);
+        for (int k = 0; k < counters::n; ++k)
+            run.w.member(std::string(counters::names[k]) + "_per_packet",
+                         m->packets ? static_cast<double>(m->delta.value[k]) / static_cast<double>(m->packets) : -1.0);
+        run.w.end_object();
+    }
     run.w.end_object();
     run.w.key("backlogs");
     run.w.begin_array();
