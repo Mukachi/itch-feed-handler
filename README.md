@@ -33,5 +33,13 @@ Every message of the sample day (423,285,709), already decoded, one CPU, ns per 
 <!-- /results -->
 
 <!-- results:decoder-summary -->
-Decoder figures: not yet measured (design note 004).
+| Decoder | M messages/s | p50 | p99 | p99.9 | Mispred./msg | With handler M/s | With handler p50 | With handler p99 |
+|---|---|---|---|---|---|---|---|---|
+| reference | 61.1–68.5 | 30–32 | 40–43 | 121–125 | 0.558–0.559 | 5.97–6.31 | 157–177 | 516–584 |
+| A: switch | 72.3–72.4 | 29 | 36–37 | 116–126 | 0.551 | 6.68 | 156–157 | 517–518 |
+| B: table | 82.0–82.1 | 26 | 35 | 115–116 | 0.552 | 6.74–6.75 | 154 | 518–519 |
+| C: SIMD, padded | 41.9–43.6 | 43 | 52–53 | 56 | 0.484 | 6.29–6.31 | 167 | 519–521 |
+| C: SIMD, unpadded | 35.3–35.9 | 48 | 59 | 123–144 | 0.492–0.493 | 5.56–5.57 | 186–187 | 592–593 |
+
+Every message of the sample day (423,285,709) in its order, one CPU, ns per message, range over 3 runs; with handler: decoded and handled on the default book. By message type and the method: [RESULTS.md](RESULTS.md).
 <!-- /results -->

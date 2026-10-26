@@ -10,6 +10,7 @@ HP ProLiant DL380 Gen9, BIOS P89 (08/29/2024); 2 × Intel(R) Xeon(R) CPU E5-2699
 |---|---|---|---|---|---|---|---|---|---|
 | book (note 002) | 3 | 2026-10-25 22:22 UTC | ca6fcbd | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | handler (note 003) | 3 | 2026-10-26 13:54 UTC | 32fab72 | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
+| decoder (note 004) | 3 | 2026-10-26 16:05 UTC | a48804a | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 
 Every run met note 004's bench-mode conditions (each file's `environment.bench_mode`, checked before use) and was built clean; compiler and flags are in each file's `environment.build`. Ranges are min–max over a set's runs.
 
@@ -144,3 +145,110 @@ By message type (p99.9 left out where fewer than ten messages lie above it):
 | handler, default book | `P` Trade (non-displayed) | 1,779,727 | 220–221 | 599–600 | 824–831 |
 | handler, default book | `Q` Cross Trade | 17,835 | 217–218 | 581–586 | 800–803 |
 | handler, default book | `I` NOII | 4,025,192 | 44 | 350–352 | 421–423 |
+
+## The decoder (note 004)
+
+Every message of the sample day `01302020.NASDAQ_ITCH50.gz` (423,285,709), held uncompressed in memory bound to the measured CPU's node as the file has it (each message after its length, so the next message's bytes follow it: the padded contract), decoded in place in the day's order on one pinned CPU (CPU 2) by the reference decoder and each alternative. Messages a second: the whole day decoded untimed. Per message: each decode timed between start() and stop(), unsubtracted (the clock's own cost is 16–17 ns at p50), the first 1,000,000 messages discarded as warm-up; branch mispredictions per message counted over that pass. With handler: every message decoded and handled (note 003's handler on the default book, a sink that counts), untimed for the rate, then each decode-and-handle timed. 3 runs; ranges over them.
+
+| Decoder | M messages/s | p50 | p99 | p99.9 | Mispred./msg | With handler M/s | With handler p50 | With handler p99 |
+|---|---|---|---|---|---|---|---|---|
+| reference | 61.1–68.5 | 30–32 | 40–43 | 121–125 | 0.558–0.559 | 5.97–6.31 | 157–177 | 516–584 |
+| A: switch | 72.3–72.4 | 29 | 36–37 | 116–126 | 0.551 | 6.68 | 156–157 | 517–518 |
+| B: table | 82.0–82.1 | 26 | 35 | 115–116 | 0.552 | 6.74–6.75 | 154 | 518–519 |
+| C: SIMD, padded | 41.9–43.6 | 43 | 52–53 | 56 | 0.484 | 6.29–6.31 | 167 | 519–521 |
+| C: SIMD, unpadded | 35.3–35.9 | 48 | 59 | 123–144 | 0.492–0.493 | 5.56–5.57 | 186–187 | 592–593 |
+
+By message type:
+
+| Decoder | Message | In the day | p50 | p99 |
+|---|---|---|---|---|
+| reference | `S` System Event | 6 | – | – |
+| reference | `R` Stock Directory | 8,916 | – | – |
+| reference | `H` Stock Trading Action | 8,921 | – | – |
+| reference | `Y` Reg SHO | 9,068 | 35–36 | – |
+| reference | `L` Market Participant Position | 216,802 | 40–41 | – |
+| reference | `V` MWCB Decline Level | 1 | – | – |
+| reference | `K` IPO Quoting Period | 2 | – | – |
+| reference | `J` LULD Auction Collar | 5 | – | – |
+| reference | `A` Add Order | 184,735,355 | 31–33 | 40–46 |
+| reference | `F` Add Order, attributed | 1,875,350 | 35 | 101 |
+| reference | `E` Order Executed | 8,415,610 | 34–35 | 39 |
+| reference | `C` Order Executed with Price | 139,474 | 42–46 | 49–102 |
+| reference | `X` Order Cancel | 4,990,972 | 33 | 35 |
+| reference | `D` Order Delete | 180,285,101 | 28–31 | 34–37 |
+| reference | `U` Order Replace | 36,777,372 | 35 | 42 |
+| reference | `P` Trade (non-displayed) | 1,779,727 | 38 | 108–111 |
+| reference | `Q` Cross Trade | 17,835 | 37 | 46–57 |
+| reference | `I` NOII | 4,025,192 | 33 | 107–108 |
+| A: switch | `S` System Event | 6 | – | – |
+| A: switch | `R` Stock Directory | 8,916 | – | – |
+| A: switch | `H` Stock Trading Action | 8,921 | – | – |
+| A: switch | `Y` Reg SHO | 9,068 | 55–56 | – |
+| A: switch | `L` Market Participant Position | 216,802 | 38–39 | – |
+| A: switch | `V` MWCB Decline Level | 1 | – | – |
+| A: switch | `K` IPO Quoting Period | 2 | – | – |
+| A: switch | `J` LULD Auction Collar | 5 | – | – |
+| A: switch | `A` Add Order | 184,735,355 | 29 | 37–39 |
+| A: switch | `F` Add Order, attributed | 1,875,350 | 29 | 37–40 |
+| A: switch | `E` Order Executed | 8,415,610 | 28–29 | 36–37 |
+| A: switch | `C` Order Executed with Price | 139,474 | 34 | 38–39 |
+| A: switch | `X` Order Cancel | 4,990,972 | 27–28 | 35 |
+| A: switch | `D` Order Delete | 180,285,101 | 29 | 35 |
+| A: switch | `U` Order Replace | 36,777,372 | 28–29 | 35–36 |
+| A: switch | `P` Trade (non-displayed) | 1,779,727 | 33–34 | 39–41 |
+| A: switch | `Q` Cross Trade | 17,835 | 33 | 37 |
+| A: switch | `I` NOII | 4,025,192 | 23–24 | 36–39 |
+| B: table | `S` System Event | 6 | – | – |
+| B: table | `R` Stock Directory | 8,916 | – | – |
+| B: table | `H` Stock Trading Action | 8,921 | – | – |
+| B: table | `Y` Reg SHO | 9,068 | 167–172 | – |
+| B: table | `L` Market Participant Position | 216,802 | 38 | – |
+| B: table | `V` MWCB Decline Level | 1 | – | – |
+| B: table | `K` IPO Quoting Period | 2 | – | – |
+| B: table | `J` LULD Auction Collar | 5 | – | – |
+| B: table | `A` Add Order | 184,735,355 | 27 | 35 |
+| B: table | `F` Add Order, attributed | 1,875,350 | 28 | 38 |
+| B: table | `E` Order Executed | 8,415,610 | 28 | 38 |
+| B: table | `C` Order Executed with Price | 139,474 | 37–38 | 41 |
+| B: table | `X` Order Cancel | 4,990,972 | 27 | 35 |
+| B: table | `D` Order Delete | 180,285,101 | 25 | 32–33 |
+| B: table | `U` Order Replace | 36,777,372 | 30–31 | 36 |
+| B: table | `P` Trade (non-displayed) | 1,779,727 | 33 | 39 |
+| B: table | `Q` Cross Trade | 17,835 | 29–31 | 37–38 |
+| B: table | `I` NOII | 4,025,192 | 23–24 | 36–38 |
+| C: SIMD, padded | `S` System Event | 6 | – | – |
+| C: SIMD, padded | `R` Stock Directory | 8,916 | – | – |
+| C: SIMD, padded | `H` Stock Trading Action | 8,921 | – | – |
+| C: SIMD, padded | `Y` Reg SHO | 9,068 | 58 | – |
+| C: SIMD, padded | `L` Market Participant Position | 216,802 | 68–69 | – |
+| C: SIMD, padded | `V` MWCB Decline Level | 1 | – | – |
+| C: SIMD, padded | `K` IPO Quoting Period | 2 | – | – |
+| C: SIMD, padded | `J` LULD Auction Collar | 5 | – | – |
+| C: SIMD, padded | `A` Add Order | 184,735,355 | 44–45 | 52–53 |
+| C: SIMD, padded | `F` Add Order, attributed | 1,875,350 | 43 | 52–53 |
+| C: SIMD, padded | `E` Order Executed | 8,415,610 | 42 | 50–51 |
+| C: SIMD, padded | `C` Order Executed with Price | 139,474 | 46 | 60–73 |
+| C: SIMD, padded | `X` Order Cancel | 4,990,972 | 40 | 46 |
+| C: SIMD, padded | `D` Order Delete | 180,285,101 | 41–42 | 46 |
+| C: SIMD, padded | `U` Order Replace | 36,777,372 | 43–44 | 52 |
+| C: SIMD, padded | `P` Trade (non-displayed) | 1,779,727 | 47–48 | 57–59 |
+| C: SIMD, padded | `Q` Cross Trade | 17,835 | 49 | 55 |
+| C: SIMD, padded | `I` NOII | 4,025,192 | 45–46 | 56 |
+| C: SIMD, unpadded | `S` System Event | 6 | – | – |
+| C: SIMD, unpadded | `R` Stock Directory | 8,916 | – | – |
+| C: SIMD, unpadded | `H` Stock Trading Action | 8,921 | – | – |
+| C: SIMD, unpadded | `Y` Reg SHO | 9,068 | 65–66 | – |
+| C: SIMD, unpadded | `L` Market Participant Position | 216,802 | 72–79 | – |
+| C: SIMD, unpadded | `V` MWCB Decline Level | 1 | – | – |
+| C: SIMD, unpadded | `K` IPO Quoting Period | 2 | – | – |
+| C: SIMD, unpadded | `J` LULD Auction Collar | 5 | – | – |
+| C: SIMD, unpadded | `A` Add Order | 184,735,355 | 49 | 58–59 |
+| C: SIMD, unpadded | `F` Add Order, attributed | 1,875,350 | 48 | 59–60 |
+| C: SIMD, unpadded | `E` Order Executed | 8,415,610 | 51 | 71–72 |
+| C: SIMD, unpadded | `C` Order Executed with Price | 139,474 | 51–53 | 74–79 |
+| C: SIMD, unpadded | `X` Order Cancel | 4,990,972 | 46–47 | 57 |
+| C: SIMD, unpadded | `D` Order Delete | 180,285,101 | 48 | 56–57 |
+| C: SIMD, unpadded | `U` Order Replace | 36,777,372 | 49 | 58 |
+| C: SIMD, unpadded | `P` Trade (non-displayed) | 1,779,727 | 52 | 62–64 |
+| C: SIMD, unpadded | `Q` Cross Trade | 17,835 | 52–53 | 60–61 |
+| C: SIMD, unpadded | `I` NOII | 4,025,192 | 48–49 | 60–61 |
