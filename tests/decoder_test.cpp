@@ -131,7 +131,12 @@ void page_end() {
     }
     check(all_decode, "S4: every type ending at an unmapped page: A, B and C unpadded decode, reading nothing past the message");
     const unsigned char* e = g.place('E', 0);  // 31 bytes: C reads its second chunk to byte 32
+#if defined(__SSSE3__)
     check(faults(decode_simd, e, message_length('E')), "S4: C padded at an unmapped page reads past the message (it needs the contract)");
+#else
+    // No SSSE3 (arm64): decode_simd is A, which reads nothing past the message.
+    check(!faults(decode_simd, e, message_length('E')), "S4: C padded is A on this architecture, and reads nothing past the message");
+#endif
     bool with_contract = true;
     for (const char* t = types; *t; ++t) {
         const unsigned char* m = g.place(*t, 32);
