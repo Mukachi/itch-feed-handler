@@ -43,3 +43,7 @@ Every message of the sample day (423,285,709), already decoded, one CPU, ns per 
 
 Every message of the sample day (423,285,709) in its order, one CPU, ns per message, range over 3 runs; with handler: decoded and handled on the default book. By message type and the method: [RESULTS.md](RESULTS.md).
 <!-- /results -->
+
+<!-- results:sequencer-summary -->
+Sequencer figures: not yet measured (design note 005).
+<!-- /results -->

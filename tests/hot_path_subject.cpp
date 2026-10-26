@@ -4,10 +4,13 @@
 // Spec: docs/design/002-order-book.md
 // And handling a decoded message (note 003, S5): the handler on the default
 // book, with a sink that does nothing, so what is checked is the handler's own.
-// And decoding a message (note 004, S3), every alternative.
+// And decoding a message (note 004, S3), every alternative; and a packet
+// through the sequencer and its timer (note 005, S5), with an output that does
+// nothing.
 #include <itchfh/book.hpp>
 #include <itchfh/decoder.hpp>
 #include <itchfh/handler.hpp>
+#include <itchfh/sequencer.hpp>
 
 #define ITCHFH_SUBJECT(R, L)                                                                                    \
     extern "C" [[gnu::noinline]] itchfh::applied itchfh_apply_##R##_##L(itchfh::book<itchfh::R, itchfh::L>& b, \
@@ -41,5 +44,16 @@ ITCHFH_DECODER(decode_switch)
 ITCHFH_DECODER(decode_table)
 ITCHFH_DECODER(decode_simd)
 ITCHFH_DECODER(decode_simd_unpadded)
+
+struct quiet_feed {
+    void deliver(std::uint64_t, const unsigned char*, std::size_t) {}
+    void state(itchfh::feed_state, std::uint64_t) {}
+    void send_request(const unsigned char*, std::size_t) {}
+};
+extern "C" [[gnu::noinline]] void itchfh_sequence_packet(itchfh::sequencer<quiet_feed>& s, const unsigned char* p, std::size_t n,
+                                                         std::int64_t now) {
+    s.on_packet(p, n, now);
+}
+extern "C" [[gnu::noinline]] void itchfh_sequence_tick(itchfh::sequencer<quiet_feed>& s, std::int64_t now) { s.on_tick(now); }
 
 int main() { return 0; }

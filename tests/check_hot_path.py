@@ -1,4 +1,4 @@
-"""S4 of note 002, S5 of note 003 and S3 of note 004, checked in the compiled code.
+"""S4 of note 002, S5 of note 003, S3 of note 004 and S5 of note 005, checked in the compiled code.
 Design: docs/design/002-order-book.md, docs/design/003-events-directory-status.md
 
 Usage: check_hot_path.py <objdump> <hot_path_subject binary>
@@ -12,6 +12,7 @@ message (note 003), the handler on the default book, is held to the same, and
 so is decoding one (note 004), every alternative. Decoder B's one indirect
 call is through its own table of decoding functions: allowed for B alone, its
 targets checked as subjects themselves (they are the A functions' bodies).
+A packet through the sequencer, and its timer (note 005), likewise.
 """
 import re
 import subprocess
@@ -20,7 +21,7 @@ import sys
 SUBJECTS = ["itchfh_apply_ref_hash_levels_sorted", "itchfh_apply_ref_hash_levels_window",
             "itchfh_apply_ref_direct_levels_sorted", "itchfh_apply_ref_direct_levels_window",
             "itchfh_handle_default", "itchfh_decode_switch", "itchfh_decode_table", "itchfh_decode_simd",
-            "itchfh_decode_simd_unpadded"]
+            "itchfh_decode_simd_unpadded", "itchfh_sequence_packet", "itchfh_sequence_tick"]
 INDIRECT_ALLOWED = {"itchfh_decode_table"}
 # __memcpy_chk, __memmove_chk: with a bounds check (_FORTIFY_SOURCE, Ubuntu's default).
 MEMORY = {"memcpy@plt", "__memcpy_chk@plt", "memmove@plt", "__memmove_chk@plt", "memcmp@plt", "__stack_chk_fail@plt"}
@@ -82,7 +83,8 @@ for subject in SUBJECTS:
             elif t in funcs and t != f:
                 todo.append(t)
     size = sum(len(funcs[f]) for f in seen)
-    label = "S5 (note 003)" if subject.startswith("itchfh_handle") else "S3 (note 004)" if subject.startswith("itchfh_decode") else "S4"
+    label = ("S5 (note 003)" if subject.startswith("itchfh_handle") else "S3 (note 004)" if subject.startswith("itchfh_decode")
+             else "S5 (note 005)" if subject.startswith("itchfh_sequence") else "S4")
     check(not bad, f"{label} {subject}: {len(seen)} functions, {size} instructions, calls only memory functions "
                    f"and the stack protector" + (f": found {bad[:5]}" if bad else ""))
 

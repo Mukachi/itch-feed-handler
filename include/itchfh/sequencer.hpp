@@ -143,12 +143,11 @@ private:
             next_ = s + 1;
         });
     }
+    // A packet beyond a gap, kept. A duplicate of one already held is kept too:
+    // the heap brings it out beside its twin, where it delivers nothing and is
+    // counted (scanning the hold for it made holding quadratic in the backlog:
+    // 2.9 us a packet behind 10,000, found by the benchmark).
     void hold(const unsigned char* p, std::size_t n, std::uint64_t first) {
-        for (std::size_t i = 0; i < heap_n_; ++i)
-            if (heap_[i].first == first) {  // the same packet again
-                ++counts_.duplicate_packets;
-                return;
-            }
         if (n > cfg_.slot_bytes) {
             ++counts_.too_big;
             return;
