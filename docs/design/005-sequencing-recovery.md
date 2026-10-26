@@ -1,6 +1,6 @@
 # 005 — Sequencing and recovery
 
-**Status:** Draft · **Updated:** 2026-10-26
+**Status:** Agreed · **Updated:** 2026-10-26
 
 ## Proposal
 
@@ -116,3 +116,4 @@ consumers see `live`, or why not.
 | Date | Stage | Finding |
 |---|---|---|
 | 2026-10-26 | Draft | Written for review from the MoldUDP64 specification V1.00 (read today: the downstream and request packets, heartbeats, end of session, and the example receiver, which discards what follows a gap and re-requests from it) |
+| 2026-10-26 | Agreed | Approved by Shep, every decision as proposed (option A each): D1 hold what follows a gap; D2 exact re-requests, 1 ms timeout, 5 retries; D3 duplicates dropped, reordering held; D4 `lost` on spent retries or a full hold (64 MB), then a snapshot; D5 `stale` after 2 s of silence; D6 a re-request server keeping the whole session; D7 1,400-byte payloads in feed order; D8 an in-memory lossy link, the day through it; D9 cost per packet and recovery time against gap size |
