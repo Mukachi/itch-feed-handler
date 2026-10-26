@@ -77,12 +77,22 @@ target_link_libraries(sample_day_test PRIVATE itchfh)
 target_compile_definitions(sample_day_test PRIVATE ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
 add_test(NAME sample_day_test COMMAND sample_day_test)
 set_tests_properties(sample_day_test PROPERTIES LABELS data TIMEOUT 7200)
+add_executable(handler_day_test tests/handler_day_test.cpp)
+target_link_libraries(handler_day_test PRIVATE itchfh)
+target_compile_definitions(handler_day_test PRIVATE ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+add_test(NAME handler_day_test COMMAND handler_day_test)
+set_tests_properties(handler_day_test PROPERTIES LABELS data TIMEOUT 14400)
 
 # The benchmark (note 002, S5): writes into results/ only in bench mode.
 add_executable(book_bench bench/book_bench.cpp)
 target_link_libraries(book_bench PRIVATE itchfh lfipc Threads::Threads)
 target_compile_definitions(book_bench PRIVATE LFIPC_RESULTS_DIR="${CMAKE_SOURCE_DIR}/results"
                                               ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+
+add_executable(handler_bench bench/handler_bench.cpp)
+target_link_libraries(handler_bench PRIVATE itchfh lfipc Threads::Threads)
+target_compile_definitions(handler_bench PRIVATE LFIPC_RESULTS_DIR="${CMAKE_SOURCE_DIR}/results"
+                                                 ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
 
 # The extraction tool of note 002, D7 (not part of the handler).
 add_executable(extract_events tools/extract_events.cpp)

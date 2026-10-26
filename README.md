@@ -22,3 +22,7 @@ data, rebuilds its order books and publishes them, marked as current or not. Wor
 
 The sample day's 417,228,155 events, one CPU, ns per event, range over 3 runs. By event type, the method and the conditions: [RESULTS.md](RESULTS.md).
 <!-- /results -->
+
+<!-- results:handler-summary -->
+Event handler figures: not yet measured (design note 003).
+<!-- /results -->

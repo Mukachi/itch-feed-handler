@@ -141,12 +141,12 @@ flowchart LR
 
 ## Tasks
 
-- [ ] The decoded forms of every message type (D1); the reference decoder; hand-built tests of it
+- [x] The decoded forms of every message type (D1); the reference decoder; hand-built tests of it
       against the specification's layouts
-- [ ] The directory (D4), trades (D5) and status (D6); the handler and its sink (D2, D3)
-- [ ] The reference handler (D7); hand-built tests of every type (S1, S3, S4)
+- [x] The directory (D4), trades (D5) and status (D6); the handler and its sink (D2, D3)
+- [x] The reference handler (D7); hand-built tests of every type (S1, S3, S4)
 - [ ] The sample day through both, from the reference decoder (S2, S3)
-- [ ] S5's call-graph check
+- [x] S5's call-graph check
 - [ ] The benchmark and the report (S6)
 
 ## Review
@@ -155,3 +155,4 @@ flowchart LR
 |---|---|---|
 | 2026-10-26 | Draft | Written for review from TotalView-ITCH 5.0, sections 1.1 to 1.8 (read today). The sample day's facts above come from a throwaway program over the whole day, outside the repo: no order before its directory entry; one second directory entry (locate 2396, ELAT, 08:17); 10,347,476 distinct match numbers, 5,170 repeated, each repeat the same shares and instrument (one trade, both sides reported); 8,615 non-printable executions (4,170,381 shares); `Q` prints 132,085,647 shares, 12,060 of the 17,835 with zero shares; no broken trades |
 | 2026-10-26 | Agreed | Approved by Shep, every decision as proposed (option A each): D1 decoded structs per type and a reference decoder; D2 a sink; D3 the order looked up before an execution, note 002 unchanged; D4 directory by locate with a symbol index; D5 trades by match number; D6 status per instrument and market-wide; D7 a reference handler; D8 measured beside it |
+| 2026-10-26 | Agreed (tasks) | **Built so far.** `messages.hpp` (every type's decoded form, 64 bytes as a tagged union), `reference_decoder.hpp`; `reference_decoder_test`: every type built byte by byte from a table of the specification's offsets transcribed apart from the decoder, each table checked to tile its type's length, every field compared; wrong lengths and unknown types refused (26 checks). `fixed_map.hpp` (fixed open addressing, never erased within a day), `directory.hpp`, `trades.hpp` (by match number), `market_status.hpp`, `handler.hpp` (the sink of D2; D3's lookup before an execution), `reference_handler.hpp` (standard containers). `handler_test`: every type by hand in both handlers, S3's trade rules, S4's edge cases, and 50,000 random messages of every type with both in lockstep (sink calls, counts, state); shown to catch two faults put in on purpose (a match number counted at every sighting; every C taken as printable). Clean under ASan/UBSan and TSan. S5: `check_hot_path` holds the handler on the default book (with a sink that does nothing) to note 002's rule: five functions, only memory functions and the stack protector. `handler_bench` and the report's handler section written; a check run on the day's first 20 million messages, outside bench mode: 8.31 M messages a second against the reference handler's 1.71 M, nothing refused |

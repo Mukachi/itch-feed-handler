@@ -1,4 +1,5 @@
-"""S4 of note 002, checked in the compiled code. Design: docs/design/002-order-book.md
+"""S4 of note 002 and S5 of note 003, checked in the compiled code.
+Design: docs/design/002-order-book.md, docs/design/003-events-directory-status.md
 
 Usage: check_hot_path.py <objdump> <hot_path_subject binary>
 
@@ -6,14 +7,16 @@ Applying an event, for every combination of D1 and D2 meant not to allocate
 (their B and C), is checked with everything it reaches: every function called,
 transitively, may call only memory copies, moves and comparisons and the stack
 protector's abort, never through a pointer, and contains no syscall
-instruction. As the gateway's check (its notes 002 and 003).
+instruction. As the gateway's check (its notes 002 and 003). Handling a decoded
+message (note 003), the handler on the default book, is held to the same.
 """
 import re
 import subprocess
 import sys
 
 SUBJECTS = ["itchfh_apply_ref_hash_levels_sorted", "itchfh_apply_ref_hash_levels_window",
-            "itchfh_apply_ref_direct_levels_sorted", "itchfh_apply_ref_direct_levels_window"]
+            "itchfh_apply_ref_direct_levels_sorted", "itchfh_apply_ref_direct_levels_window",
+            "itchfh_handle_default"]
 # __memcpy_chk, __memmove_chk: with a bounds check (_FORTIFY_SOURCE, Ubuntu's default).
 MEMORY = {"memcpy@plt", "__memcpy_chk@plt", "memmove@plt", "__memmove_chk@plt", "memcmp@plt", "__stack_chk_fail@plt"}
 
@@ -68,7 +71,7 @@ for subject in SUBJECTS:
             elif t in funcs and t != f:
                 todo.append(t)
     size = sum(len(funcs[f]) for f in seen)
-    check(not bad, f"S4 {subject}: {len(seen)} functions, {size} instructions, calls only memory functions "
+    check(not bad, f"{'S5 (note 003)' if subject.startswith('itchfh_handle') else 'S4'} {subject}: {len(seen)} functions, {size} instructions, calls only memory functions "
                    f"and the stack protector" + (f": found {bad[:5]}" if bad else ""))
 
 print("FAILED" if failures else "all passed")
