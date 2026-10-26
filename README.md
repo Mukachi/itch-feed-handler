@@ -45,5 +45,14 @@ Every message of the sample day (423,285,709) in its order, one CPU, ns per mess
 <!-- /results -->
 
 <!-- results:sequencer-summary -->
-Sequencer figures: not yet measured (design note 005).
+| Measure | Rate | p50 | p99 | p99.9 |
+|---|---|---|---|---|
+| in order, a packet | 2.30 M packets/s, 104.1 M messages/s | 428–429 | 810–811 | 869–873 |
+| held after a gap, a packet | – | 296–374 | 820–883 | 1,024–1,243 |
+| the gap filled, 10 held delivered | 217–232 ns a packet | 2,359–2,555 | – | – |
+| the gap filled, 100 held delivered | 221–292 ns a packet | 22.4 µs–29.5 µs | – | – |
+| the gap filled, 1,000 held delivered | 213–265 ns a packet | 214.1 µs–265.6 µs | – | – |
+| the gap filled, 10,000 held delivered | 222–270 ns a packet | 2,218.2 µs–2,702.8 µs | – | – |
+
+The sample day in 9,358,889 MoldUDP64 packets, one CPU, ns, range over 6 runs; the sequencer's own work. The method: [RESULTS.md](RESULTS.md).
 <!-- /results -->

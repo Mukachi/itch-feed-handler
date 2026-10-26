@@ -11,6 +11,7 @@ HP ProLiant DL380 Gen9, BIOS P89 (08/29/2024); 2 × Intel(R) Xeon(R) CPU E5-2699
 | book (note 002) | 3 | 2026-10-25 22:22 UTC | ca6fcbd | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | handler (note 003) | 3 | 2026-10-26 13:54 UTC | 32fab72 | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | decoder (note 004) | 3 | 2026-10-26 16:05 UTC | a48804a | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
+| sequencer (note 005) | 6 | 2026-10-26 20:01 UTC | 695b3bf | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 
 Every run met note 004's bench-mode conditions (each file's `environment.bench_mode`, checked before use) and was built clean; compiler and flags are in each file's `environment.build`. Ranges are min–max over a set's runs.
 
@@ -252,3 +253,16 @@ By message type:
 | C: SIMD, unpadded | `P` Trade (non-displayed) | 1,779,727 | 52 | 62–64 |
 | C: SIMD, unpadded | `Q` Cross Trade | 17,835 | 52–53 | 60–61 |
 | C: SIMD, unpadded | `I` NOII | 4,025,192 | 48–49 | 60–61 |
+
+## Sequencing and recovery (note 005)
+
+The sample day `01302020.NASDAQ_ITCH50.gz` packed by the packetizer into 9,358,889 MoldUDP64 packets of at most 1,400 bytes of messages, held in memory bound to the measured CPU's node, through the sequencer on one pinned CPU (CPU 2), its output counting messages and nothing else. In order: every packet, each call timed between start() and stop(), unsubtracted (the clock's own cost is 16–17 ns at p50), the first 10,000 discarded; the rate from an untimed pass. Held: a packet arriving after a gap, copied into the hold. The gap filled: one packet missing with that many held behind it, then the missing packet, the call that delivers the whole backlog timed (200 trials at each size, spread over the day; p99 and p99.9 left out where fewer than ten lie above them). What is measured is the sequencer's own work; recovery over a network is note 007's and note 010's. Holding and delivering a backlog came out at two levels across runs, about 20% apart, with the same instructions, mispredictions and (in huge pages) next to no TLB misses; the ranges span both (note 005, Review). 6 runs; ranges over them.
+
+| Measure | Rate | p50 | p99 | p99.9 |
+|---|---|---|---|---|
+| in order, a packet | 2.30 M packets/s, 104.1 M messages/s | 428–429 | 810–811 | 869–873 |
+| held after a gap, a packet | – | 296–374 | 820–883 | 1,024–1,243 |
+| the gap filled, 10 held delivered | 217–232 ns a packet | 2,359–2,555 | – | – |
+| the gap filled, 100 held delivered | 221–292 ns a packet | 22.4 µs–29.5 µs | – | – |
+| the gap filled, 1,000 held delivered | 213–265 ns a packet | 214.1 µs–265.6 µs | – | – |
+| the gap filled, 10,000 held delivered | 222–270 ns a packet | 2,218.2 µs–2,702.8 µs | – | – |

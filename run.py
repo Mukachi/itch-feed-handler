@@ -271,7 +271,7 @@ def sequencer_rows(lf, runs):
     for i, b0 in enumerate(q[0]["backlogs"]):
         bs = [x["backlogs"][i] for x in q]
         rows.append([f"the gap filled, {b0['held_packets']:,} held delivered",
-                     lf.rng([b["median_ns_per_packet"] for b in bs], lambda v: f"{v:,.0f} ns a packet")]
+                     lf.rng([b["median_ns_per_packet"] for b in bs], lambda v: f"{v:,.0f}") + " ns a packet"]
                     + [lf.rng([b[f] for b in bs if b[f] >= 0]) for f in ("p50_ns", "p99_ns", "p999_ns")])
     return rows
 
@@ -290,7 +290,9 @@ def sequencer_section(lf, note, runs):
             "from an untimed pass. Held: a packet arriving after a gap, copied into the hold. The gap filled: one packet missing "
             "with that many held behind it, then the missing packet, the call that delivers the whole backlog timed (200 trials "
             "at each size, spread over the day; p99 and p99.9 left out where fewer than ten lie above them). What is measured is "
-            "the sequencer's own work; recovery over a network is note 007's and note 010's. "
+            "the sequencer's own work; recovery over a network is note 007's and note 010's. Holding and delivering a backlog "
+            "came out at two levels across runs, about 20% apart, with the same instructions, mispredictions and (in huge "
+            "pages) next to no TLB misses; the ranges span both (note 005, Review). "
             f"{len(runs)} runs; ranges over them.", "",
             lf.table(SEQUENCER_HEAD, sequencer_rows(lf, runs)), ""]
 
