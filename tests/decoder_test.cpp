@@ -106,7 +106,9 @@ struct guarded {
     }
 };
 
-// True if decoding faults (a child process takes the fault).
+// True if decoding faults (a child process takes the fault: it dies by the
+// signal, or, under AddressSanitizer, whose handler reports it, exits with an
+// error).
 bool faults(decode_fn f, const unsigned char* p, std::size_t n) {
     const pid_t pid = ::fork();
     if (pid == 0) {
@@ -116,7 +118,7 @@ bool faults(decode_fn f, const unsigned char* p, std::size_t n) {
     }
     int st = 0;
     ::waitpid(pid, &st, 0);
-    return WIFSIGNALED(st) && WTERMSIG(st) == SIGSEGV;
+    return !(WIFEXITED(st) && WEXITSTATUS(st) == 0);
 }
 
 void page_end() {

@@ -1,10 +1,11 @@
-build/
-build-*/
+*.a
+*.o
+*.so
 .cache/
 __pycache__/
-*.o
-*.a
-*.so
+build-*/
+build-fuzz/
+build/
 compile_commands.json
-perf.data*
 data/
+perf.data*

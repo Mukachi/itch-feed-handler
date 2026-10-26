@@ -82,6 +82,11 @@ target_link_libraries(handler_day_test PRIVATE itchfh)
 target_compile_definitions(handler_day_test PRIVATE ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
 add_test(NAME handler_day_test COMMAND handler_day_test)
 set_tests_properties(handler_day_test PROPERTIES LABELS data TIMEOUT 14400)
+add_executable(decoder_day_test tests/decoder_day_test.cpp)
+target_link_libraries(decoder_day_test PRIVATE itchfh)
+target_compile_definitions(decoder_day_test PRIVATE ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+add_test(NAME decoder_day_test COMMAND decoder_day_test)
+set_tests_properties(decoder_day_test PROPERTIES LABELS data TIMEOUT 7200)
 
 # The benchmark (note 002, S5): writes into results/ only in bench mode.
 add_executable(book_bench bench/book_bench.cpp)
@@ -94,6 +99,11 @@ target_link_libraries(handler_bench PRIVATE itchfh lfipc Threads::Threads)
 target_compile_definitions(handler_bench PRIVATE LFIPC_RESULTS_DIR="${CMAKE_SOURCE_DIR}/results"
                                                  ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
 
+add_executable(decoder_bench bench/decoder_bench.cpp)
+target_link_libraries(decoder_bench PRIVATE itchfh lfipc Threads::Threads)
+target_compile_definitions(decoder_bench PRIVATE LFIPC_RESULTS_DIR="${CMAKE_SOURCE_DIR}/results"
+                                                 ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+
 # The extraction tool of note 002, D7 (not part of the handler).
 add_executable(extract_events tools/extract_events.cpp)
 target_link_libraries(extract_events PRIVATE itchfh)
@@ -101,3 +111,16 @@ target_link_libraries(extract_events PRIVATE itchfh)
 # One number everywhere: a stale RESULTS.md or README figure fails the suite.
 add_test(NAME report_check COMMAND Python3::Interpreter -I ${CMAKE_SOURCE_DIR}/run.py report --check
                                   --lockfree-ipc ${lockfree_ipc_SOURCE_DIR})
+
+# Fuzzing (note 004, S2): clang only, a separate build directory, e.g.
+#   CXX=clang++ cmake -S . -B build-fuzz -DITCHFH_FUZZ=ON && cmake --build build-fuzz --target fuzz_decoder
+option(ITCHFH_FUZZ "Build the libFuzzer targets (clang)" OFF)
+if(ITCHFH_FUZZ)
+  if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    message(FATAL_ERROR "ITCHFH_FUZZ needs clang (libFuzzer)")
+  endif()
+  add_executable(fuzz_decoder fuzz/fuzz_decoder.cpp)
+  target_link_libraries(fuzz_decoder PRIVATE itchfh)
+  target_compile_options(fuzz_decoder PRIVATE -g -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all)
+  target_link_options(fuzz_decoder PRIVATE -fsanitize=fuzzer,address,undefined)
+endif()

@@ -31,3 +31,7 @@ The sample day's 417,228,155 events, one CPU, ns per event, range over 3 runs. B
 
 Every message of the sample day (423,285,709), already decoded, one CPU, ns per message, range over 3 runs. By message type and the method: [RESULTS.md](RESULTS.md).
 <!-- /results -->
+
+<!-- results:decoder-summary -->
+Decoder figures: not yet measured (design note 004).
+<!-- /results -->
