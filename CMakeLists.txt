@@ -92,6 +92,11 @@ target_link_libraries(sequencer_day_test PRIVATE itchfh)
 target_compile_definitions(sequencer_day_test PRIVATE ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
 add_test(NAME sequencer_day_test COMMAND sequencer_day_test)
 set_tests_properties(sequencer_day_test PROPERTIES LABELS data TIMEOUT 14400)
+add_executable(snapshot_day_test tests/snapshot_day_test.cpp)
+target_link_libraries(snapshot_day_test PRIVATE itchfh)
+target_compile_definitions(snapshot_day_test PRIVATE ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+add_test(NAME snapshot_day_test COMMAND snapshot_day_test)
+set_tests_properties(snapshot_day_test PROPERTIES LABELS data TIMEOUT 14400)
 
 # The benchmark (note 002, S5): writes into results/ only in bench mode.
 add_executable(book_bench bench/book_bench.cpp)
@@ -113,6 +118,11 @@ add_executable(sequencer_bench bench/sequencer_bench.cpp)
 target_link_libraries(sequencer_bench PRIVATE itchfh lfipc Threads::Threads)
 target_compile_definitions(sequencer_bench PRIVATE LFIPC_RESULTS_DIR="${CMAKE_SOURCE_DIR}/results"
                                                    ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+
+add_executable(snapshot_bench bench/snapshot_bench.cpp)
+target_link_libraries(snapshot_bench PRIVATE itchfh lfipc Threads::Threads)
+target_compile_definitions(snapshot_bench PRIVATE LFIPC_RESULTS_DIR="${CMAKE_SOURCE_DIR}/results"
+                                                  ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
 
 # The extraction tool of note 002, D7 (not part of the handler).
 add_executable(extract_events tools/extract_events.cpp)

@@ -56,3 +56,7 @@ Every message of the sample day (423,285,709) in its order, one CPU, ns per mess
 
 The sample day in 9,358,889 MoldUDP64 packets, one CPU, ns, range over 6 runs; the sequencer's own work. The method: [RESULTS.md](RESULTS.md).
 <!-- /results -->
+
+<!-- results:snapshot-summary -->
+Snapshot figures: not yet measured (design note 006).
+<!-- /results -->
