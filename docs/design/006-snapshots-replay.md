@@ -1,6 +1,6 @@
 # 006 — Snapshots and replay
 
-**Status:** Draft · **Updated:** 2026-10-26
+**Status:** Agreed · **Updated:** 2026-10-26
 
 ## Proposal
 
@@ -113,3 +113,4 @@ sequenceDiagram
 | Date | Stage | Finding |
 |---|---|---|
 | 2026-10-26 | Draft | Written for review from GLIMPSE 5.0 (revised 22 August 2024) and SoupBinTCP 3.00, read today. Found there: the End of Snapshot's sequence number is 20 ASCII digits, not binary; the spin carries no trades, positions, imbalances, collars, IPO or circuit-breaker state |
+| 2026-10-26 | Agreed | Approved by Shep, every decision as proposed (option A each): D1 a server following the feed with the reference handler and book and each order's attribution; D2 a snapshot between two messages; D3 the spin in book order, time priority kept; D4 a fresh client book fed the spin through the same path, then resume(N); D5 what is not restored marked; D6 snapshots across the day, round trip, catch-up and the lossy link; D7 size, build and apply times |
