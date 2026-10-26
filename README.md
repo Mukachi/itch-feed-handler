@@ -64,3 +64,7 @@ The sample day in 9,358,889 MoldUDP64 packets, one CPU, ns, range over 6 runs; t
 
 A GLIMPSE 5.0 snapshot at the sample day's peak of live orders: built by the snapshot server, applied by a client into a fresh book, one CPU, range over 3 runs. Every point of the day: [RESULTS.md](RESULTS.md).
 <!-- /results -->
+
+<!-- results:feed-summary -->
+Receiving figures: not yet measured (design note 007).
+<!-- /results -->

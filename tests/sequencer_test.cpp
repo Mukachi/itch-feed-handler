@@ -110,7 +110,33 @@ void burst() {
     link_t l(*s, r, small_hold(), ig);
     l.run(1'000, 2'000'000'000);
     check(all_once(l, 40'000) && l.seen().requests_sent >= 40 && l.seq().counts().retried == 0,
-          "a burst of about 50 packets lost: asked for in a chain (each answer at most a packet, the next asked at once), no retry needed");
+          "a burst of about 50 packets lost: asked for in a window of requests, topped up as answers arrive, no retry needed");
+}
+
+// D2 amended: a burst of about 2,000 packets lost at 500,000 packets a second
+// (5 us each way). One request in flight recovers a packet a round trip, so
+// the hold (2,048 packets) fills and the feed is lost; with the window it is
+// recovered, no retry needed. Found by note 007's day over loopback.
+void window() {
+    auto s = synthetic(400'000);
+    bool lost_alone = false, recovered = false;
+    std::uint64_t requests = 0;
+    for (const int w : {1, 16}) {
+        itchfh::test::ignore_messages ig;
+        itchfh::test::link_rules r;
+        r.drop_first = [](std::uint64_t f) { return f > 100'000 && f < 176'000; };
+        sequencer_config c = small_hold();
+        c.window = w;
+        link_t l(*s, r, c, ig);
+        l.run(2'000, 2'000'000'000);
+        if (w == 1) lost_alone = l.seq().state() == feed_state::lost && l.seq().counts().hold_full > 0;
+        else {
+            recovered = all_once(l, 400'000) && l.seq().state() == feed_state::ended && l.seq().counts().retried == 0;
+            requests = l.seen().requests_sent;
+        }
+    }
+    check(lost_alone && recovered, "D2 amended: about 2,000 packets lost at 500,000 a second: one request in flight fills the hold (lost); "
+                                   "16 in flight, 26 messages each, recover it with no retry (" + std::to_string(requests) + " requests)");
 }
 
 void duplicates_and_reordering() {
@@ -275,6 +301,7 @@ int main() {
     clean();
     one_lost();
     burst();
+    window();
     duplicates_and_reordering();
     lost_request();
     every_request_lost();

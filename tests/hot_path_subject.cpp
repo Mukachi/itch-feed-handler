@@ -6,9 +6,11 @@
 // book, with a sink that does nothing, so what is checked is the handler's own.
 // And decoding a message (note 004, S3), every alternative; and a packet
 // through the sequencer and its timer (note 005, S5), with an output that does
-// nothing.
+// nothing. And the receive path (note 007, S5): a pass of each of D4's
+// arrangements, D1's two ways of reading included, through to the handler.
 #include <itchfh/book.hpp>
 #include <itchfh/decoder.hpp>
+#include <itchfh/feed.hpp>
 #include <itchfh/handler.hpp>
 #include <itchfh/sequencer.hpp>
 
@@ -55,5 +57,10 @@ extern "C" [[gnu::noinline]] void itchfh_sequence_packet(itchfh::sequencer<quiet
     s.on_packet(p, n, now);
 }
 extern "C" [[gnu::noinline]] void itchfh_sequence_tick(itchfh::sequencer<quiet_feed>& s, std::int64_t now) { s.on_tick(now); }
+
+using default_handler = itchfh::handler<itchfh::default_book, quiet_sink>;
+extern "C" [[gnu::noinline]] void itchfh_feed_one_poll(itchfh::feed_one<default_handler>& f) { f.poll(); }
+extern "C" [[gnu::noinline]] void itchfh_feed_two_receive(itchfh::feed_two<default_handler>& f) { f.receive_pass(); }
+extern "C" [[gnu::noinline]] bool itchfh_feed_two_handle(itchfh::feed_two<default_handler>& f) { return f.handle_one(); }
 
 int main() { return 0; }

@@ -1,6 +1,6 @@
 # 005 — Sequencing and recovery
 
-**Status:** Measured · **Updated:** 2026-10-26
+**Status:** Measured (D2 amended) · **Updated:** 2026-10-26
 
 ## Proposal
 
@@ -56,6 +56,11 @@ consumers see `live`, or why not.
   trip is about 7 µs, a 10GBASE-T one about 40 µs, note 005 of the gateway), the outstanding part
   asked again, up to a number of retries (default 5), then `lost` (D4). A request is never sent
   twice within the timeout.
+  *Amended (agreed with Shep, option A, from note 007's build):* the split requests are in flight
+  together, up to a window (default 16), each for 26 messages (the fewest a full 1,400-byte packet
+  holds, so answers overlap rather than leave holes; the duplicates are dropped, D3); the window is
+  topped up as answers move the gap on, and asked again from its front after the timeout. The
+  build had sent one request at a time (see Review).
 - **D3. Duplicates and reordering.** *Proposed:* a message numbered below the next expected is a
   duplicate, dropped and counted; a packet beyond it is held (D1). The hold is ordered by
   sequence number, so reordering needs nothing more.
@@ -126,3 +131,4 @@ consumers see `live`, or why not.
 | 2026-10-26 | Built (runs) | **Six runs in huge pages** (`695b3bf`, clean, bench mode, one session): the 16 GB of packets and the hold all in huge pages, and the data-TLB misses near zero in every run (0.003–0.006 a held packet, against 0.40 before), **yet one run of six at the fast level still**: held 296 ns p50 and a backlog of 10,000 in 2.22 ms, against 371–374 ns and 2.69–2.70 ms (1,460 cycles a held packet against 1,714–1,732; last-level misses 36.3 against 38.0–38.9). So TLB misses are not the cause. Ruled out over the eleven counted runs: the clock, instructions, branch mispredictions, L1 misses, TLB misses. Left: the step shows only where packets are copied into and out of the 64 MB hold, memory-bound work (38 last-level misses a held packet, the hold larger than the 55 MB L3), so the suspect is where the hold lands in physical memory (its spread over the L3's slices and DRAM's channels and banks), which cannot be set or seen from user space. The in-order path, on every packet's way, is steady in all six: p50 428–429 ns, 2.30 M packets a second (104 M messages). Huge pages stay (agreed): they took the TLB misses away and the hold about 2% faster, though not the levels. **Published** (agreed with Shep, option A), all six: `results/sequencer-dev-lnx01-20261026T200100Z.json` to `…201134Z`; RESULTS gives the hold and backlog figures as ranges spanning both levels, and says so. Against the Spec: S1 (`sequencer_day_test`), S2–S4 (`sequencer_test`), S5 (`check_hot_path`), S6 (these runs, with D9 amended as above). For Shep's review for Measured |
 | 2026-10-26 | Measured | Reviewed and approved by Shep against the Spec: S1–S6 met as recorded above, with D4 (huge pages) and D9 (the sequencer's own work) amended, and the two levels in the hold left open as recorded |
 | 2026-10-26 | Measured (note) | **From note 007's build:** D2's timeout assumes an answer is read within a retry of its being sent. With answers on the multicast socket that fails once the receiver lags the sender by more than the retries (~5 ms), since they queue behind the backlog; note 007 amended its D1 (answers on a request socket of their own, read first while gapped). The sequencer is unchanged |
+| 2026-10-26 | Measured (amendment) | **D2 amended, from note 007's day over loopback.** The build sent one request at a time, the next when an answer moved the gap on, though D2 as agreed splits a gap into requests of a packet each: a recovery of one packet a round trip (over loopback, with the receiver's pass and the sender's serving, about 30k packets a second), against a feed adding 100k a second to the hold, so a loss of more than about 14,000 packets filled the 64 MB hold and the feed was lost. Options put to Shep: A requests in flight together; B one at a time, the limit stated. **A agreed:** up to 16 requests of 26 messages each (`sequencer_config::window`, `request_step`), topped up as the gap moves on, the window asked again from its front on a timeout; a gap shorter than a step is still asked for exactly. `sequencer_test` gains the case: about 2,000 packets lost at 500,000 a second, a 2,048-packet hold: one in flight (`window` 1, the old behaviour) fills the hold and is lost; 16 recover it with no retry. Every other sequencer test unchanged and passing; clean under ASan/UBSan and TSan. The published figures (in order, held, backlog) do not send requests beyond a gap's first: not re-measured; to be confirmed by a check run |

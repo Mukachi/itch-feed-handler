@@ -4,9 +4,11 @@
 // time is given (nanoseconds), nothing is read or sent here.
 //   D1  what follows a gap is held (fixed slots, ordered by sequence number)
 //       and applied once the gap is filled
-//   D2  a gap is asked for exactly; asked again when an answer moves it on
-//       (one answer is at most a packet) or after the timeout, up to the
-//       retries; never twice within the timeout otherwise
+//   D2  a gap is asked for exactly, in steps of `request_step` messages, up
+//       to `window` requests in flight (one answer is one packet, so one
+//       request at a time recovered too slowly: amended, note 005 Review);
+//       more asked as answers move it on; the window asked again from the
+//       front after the timeout without progress, up to the retries
 //   D3  messages below the next expected are dropped and counted
 //   D4  spent retries or a full hold: `lost`, until resume() from a snapshot
 //   D5  nothing within the staleness bound: `stale`; a heartbeat beyond the
@@ -34,6 +36,12 @@ struct sequencer_config {
     std::size_t slot_bytes = 2048;          // a held packet's room (ours are at most 1,420 bytes)
     std::int64_t retry_ns = 1'000'000;      // D2
     int retries = 5;
+    // D2 amended: messages a request asks for, the fewest a full packet can
+    // carry (1,400-byte payloads of the longest message, 50 bytes and its
+    // 2-byte length), so the answers overlap rather than leave holes; and the
+    // requests in flight at once.
+    std::uint32_t request_step = 26;
+    int window = 16;
     std::int64_t stale_ns = 2'000'000'000;  // D5
     // The first sequence number expected: 1 for a session joined at its start;
     // a first packet beyond it is a gap, not a new beginning.
@@ -103,6 +111,7 @@ public:
                 change(feed_state::lost);
             } else {
                 ++counts_.retried;
+                asked_upto_ = next_;  // the whole window again, from the front
                 ask(now);
             }
         }
@@ -185,13 +194,15 @@ private:
                 tries_ = 0;
                 asked_ = false;
             }
-            // Asked again at once when the gap has moved on since (one answer
-            // is at most a packet), else only after the timeout (on_tick). The
-            // retries count timeouts without progress: they start again when
-            // the gap moves on (found by the random streams: counted over a
-            // whole gapped stretch, five timeouts anywhere in it gave up).
+            // When the gap has moved on since (or is new), the window is
+            // topped up beyond what is in flight; otherwise asked again only
+            // after the timeout (on_tick). The retries count timeouts without
+            // progress: they start again when the gap moves on (found by the
+            // random streams: counted over a whole gapped stretch, five
+            // timeouts anywhere in it gave up).
             if (!asked_ || asked_from_ != next_) {
                 tries_ = 0;
+                if (!asked_ || asked_upto_ < next_) asked_upto_ = next_;
                 ask(now);
             }
             return;
@@ -199,15 +210,22 @@ private:
         if (ended_) change(feed_state::ended);
         else change(feed_state::live);
     }
+    // Requests from `asked_upto_` (what is in flight ends there) to the gap's
+    // end or the window's, a step each.
     void ask(std::int64_t now) {
         const std::uint64_t to = heap_n_ > 0 ? heap_[0].first : known_end_;
-        std::uint64_t want = to > next_ ? to - next_ : 0;
-        if (want == 0) return;
-        if (want > 0xFFFE) want = 0xFFFE;  // 0xFFFF is not a count of messages
-        unsigned char req[mold::request_size];
-        mold::build_request(req, {session_, next_, static_cast<std::uint16_t>(want)});
-        out_.send_request(req, sizeof(req));
-        ++counts_.requests;
+        if (to <= next_) return;
+        const std::uint64_t step = cfg_.request_step;
+        const std::uint64_t limit = to < next_ + step * static_cast<std::uint64_t>(cfg_.window) ? to : next_ + step * static_cast<std::uint64_t>(cfg_.window);
+        for (std::uint64_t s = asked_upto_; s < limit;) {
+            const std::uint64_t want = limit - s < step ? limit - s : step;
+            unsigned char req[mold::request_size];
+            mold::build_request(req, {session_, s, static_cast<std::uint16_t>(want)});
+            out_.send_request(req, sizeof(req));
+            ++counts_.requests;
+            s += want;
+            asked_upto_ = s;
+        }
         asked_ = true;
         asked_from_ = next_;
         asked_at_ = now;
@@ -253,7 +271,7 @@ private:
     std::size_t heap_n_ = 0, free_n_ = 0;
     mold::session_id session_{};
     bool have_session_ = false, ended_ = false, asked_ = false;
-    std::uint64_t next_ = 1, known_end_ = 0, asked_from_ = 0;
+    std::uint64_t next_ = 1, known_end_ = 0, asked_from_ = 0, asked_upto_ = 0;
     std::int64_t last_rx_ = 0, asked_at_ = 0;
     int tries_ = 0;
     feed_state state_ = feed_state::waiting;

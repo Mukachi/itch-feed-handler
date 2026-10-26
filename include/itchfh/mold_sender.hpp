@@ -27,11 +27,13 @@ struct sender_config {
     double drop = 0;           // share of packets not sent (their first sending only)
     std::uint64_t seed = 7;
     std::int64_t heartbeat_ns = 1'000'000'000;
+    std::uint64_t last = 0;    // > 0: only messages 1..last, the session ending there
     int end_markers = 5;       // end-of-session packets after the last, a millisecond apart, then one a heartbeat
 };
 
 struct sender_counts {
     std::uint64_t packets = 0, dropped = 0, heartbeats = 0, requests = 0, answered = 0, behind = 0;
+    std::int64_t first_ns = 0, last_ns = 0;  // the first and last packets' sending (monotonic)
 };
 
 inline std::int64_t monotonic_ns() {
@@ -53,7 +55,8 @@ public:
         std::int64_t last_sent = t0;
         std::uint64_t first = 1, sent = 0;
         const std::uint64_t day_start = timestamp_of(1);
-        while (first <= store_.count() && !stop.load(std::memory_order_relaxed)) {
+        const std::uint64_t end = cfg_.last > 0 && cfg_.last < store_.count() ? cfg_.last : store_.count();
+        while (first <= end && !stop.load(std::memory_order_relaxed)) {
             const std::int64_t due = cfg_.packets_per_s > 0
                                          ? t0 + static_cast<std::int64_t>(static_cast<double>(sent) * 1e9 / cfg_.packets_per_s)
                                          : t0 + static_cast<std::int64_t>(static_cast<double>(timestamp_of(first) - day_start) / cfg_.speed);
@@ -69,18 +72,20 @@ public:
                 }
                 now = monotonic_ns();
             }
-            const std::size_t n = store_.fill(first, ~0ull, pk);
+            const std::size_t n = store_.fill(first, end - first + 1, pk);
             const std::uint64_t count = mold::read_header(pk).count;
             if (cfg_.drop > 0 && std::uniform_real_distribution<double>(0, 1)(rng_) < cfg_.drop) ++counts_.dropped;
             else out_.send(pk, n);
             ++counts_.packets;
             ++sent;
+            counts_.last_ns = monotonic_ns();
+            if (counts_.first_ns == 0) counts_.first_ns = counts_.last_ns;
             first += count;
-            last_sent = monotonic_ns();
+            last_sent = counts_.last_ns;
             serve();
         }
         for (int k = 0; k < cfg_.end_markers && !stop.load(std::memory_order_relaxed); ++k) {
-            mold::build_marker(pk, store_.session(), store_.count() + 1, mold::end_of_session);
+            mold::build_marker(pk, store_.session(), end + 1, mold::end_of_session);
             out_.send(pk, mold::header_size);
             const std::int64_t until = monotonic_ns() + 1'000'000;
             while (monotonic_ns() < until) serve();
@@ -89,7 +94,7 @@ public:
         while (!stop.load(std::memory_order_relaxed)) {
             serve();
             if (const std::int64_t now = monotonic_ns(); now - last_end >= cfg_.heartbeat_ns) {
-                mold::build_marker(pk, store_.session(), store_.count() + 1, mold::end_of_session);
+                mold::build_marker(pk, store_.session(), end + 1, mold::end_of_session);
                 out_.send(pk, mold::header_size);
                 last_end = now;
             }

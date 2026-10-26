@@ -64,7 +64,7 @@ endforeach()
 # S4 of note 002: applying an event allocates nothing and makes no system call,
 # checked in the compiled code (not under sanitizers, which add calls).
 add_executable(hot_path_subject tests/hot_path_subject.cpp)
-target_link_libraries(hot_path_subject PRIVATE itchfh)
+target_link_libraries(hot_path_subject PRIVATE itchfh lfipc Threads::Threads)
 if(CMAKE_OBJDUMP AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64" AND NOT CMAKE_CXX_FLAGS MATCHES "-fsanitize")
   add_test(NAME check_hot_path
            COMMAND Python3::Interpreter -I ${CMAKE_SOURCE_DIR}/tests/check_hot_path.py
@@ -97,6 +97,11 @@ target_link_libraries(snapshot_day_test PRIVATE itchfh)
 target_compile_definitions(snapshot_day_test PRIVATE ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
 add_test(NAME snapshot_day_test COMMAND snapshot_day_test)
 set_tests_properties(snapshot_day_test PROPERTIES LABELS data TIMEOUT 14400)
+add_executable(feed_day_test tests/feed_day_test.cpp)
+target_link_libraries(feed_day_test PRIVATE itchfh lfipc Threads::Threads)
+target_compile_definitions(feed_day_test PRIVATE ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+add_test(NAME feed_day_test COMMAND feed_day_test)
+set_tests_properties(feed_day_test PROPERTIES LABELS data TIMEOUT 14400)
 
 # The benchmark (note 002, S5): writes into results/ only in bench mode.
 add_executable(book_bench bench/book_bench.cpp)
@@ -123,6 +128,12 @@ add_executable(snapshot_bench bench/snapshot_bench.cpp)
 target_link_libraries(snapshot_bench PRIVATE itchfh lfipc Threads::Threads)
 target_compile_definitions(snapshot_bench PRIVATE LFIPC_RESULTS_DIR="${CMAKE_SOURCE_DIR}/results"
                                                   ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+add_executable(feed_bench bench/feed_bench.cpp)
+target_link_libraries(feed_bench PRIVATE itchfh lfipc Threads::Threads)
+target_compile_definitions(feed_bench PRIVATE LFIPC_RESULTS_DIR="${CMAKE_SOURCE_DIR}/results")
+add_executable(feed_sender bench/feed_sender.cpp)
+target_link_libraries(feed_sender PRIVATE itchfh lfipc Threads::Threads)
+target_compile_definitions(feed_sender PRIVATE ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
 
 # The extraction tool of note 002, D7 (not part of the handler).
 add_executable(extract_events tools/extract_events.cpp)

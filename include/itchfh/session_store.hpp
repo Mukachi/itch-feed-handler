@@ -32,6 +32,8 @@ public:
     }
     std::uint64_t count() const { return count_; }
     const mold::session_id& session() const { return session_; }
+    // Another session over the same messages (note 007's sender: a fresh one each run).
+    void set_session(const mold::session_id& s) { session_ = s; }
 
     // A downstream packet in `out` (header_size + payload bytes) of the
     // messages from `first`, at most `most`, as many as fit; its size, or 0 if
