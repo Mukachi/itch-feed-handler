@@ -21,4 +21,4 @@ Only Spec and Review are mandatory. Any section can be one line.
 | [004](design/004-decoder.md) | ITCH decoder | Measured |
 | [005](design/005-sequencing-recovery.md) | Sequencing and recovery | Measured |
 | [006](design/006-snapshots-replay.md) | Snapshots and replay | Measured |
-| [007](design/007-receiver-framer.md) | Receiver and framer | Draft |
+| [007](design/007-receiver-framer.md) | Receiver and framer | Agreed |

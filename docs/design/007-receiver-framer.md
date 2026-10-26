@@ -1,6 +1,6 @@
 # 007 — Receiver and framer
 
-**Status:** Draft · **Updated:** 2026-10-26
+**Status:** Agreed · **Updated:** 2026-10-26
 
 ## Proposal
 
@@ -107,3 +107,4 @@ flowchart LR
 | Date | Stage | Finding |
 |---|---|---|
 | 2026-10-26 | Draft | Written for review. On this machine today: `net.core.rmem_max` 4 MB (a receive buffer's ceiling without a sysctl), `busy_read` and `busy_poll` 0 |
+| 2026-10-26 | Agreed | Approved by Shep, every decision as proposed (option A each): D1 `recvmmsg` batches into padded buffers, `recvmsg` beside it; D2 busy-polling, `SO_BUSY_POLL` measured on the card; D3 the largest buffer allowed, drops counted, `rmem_max` raised only if shown needed; D4 one thread and two, measured; D5 recordings as received datagrams through the same path; D6 our sender with the re-request server; D7 loopback and the card; D8 kernel receive stamps; D9 the day over both paths; D10 cost, drop-free pace and latency |
