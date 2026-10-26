@@ -54,7 +54,7 @@ target_compile_definitions(lfipc INTERFACE ITCHFH_LFIPC_COMMIT="${ITCHFH_LFIPC_C
 add_dependencies(lfipc build_info)
 
 # Tests: plain executables under CTest. Each one added with its component.
-set(ITCHFH_TESTS reference_book_test book_test reference_decoder_test handler_test)
+set(ITCHFH_TESTS reference_book_test book_test reference_decoder_test handler_test decoder_test)
 foreach(t ${ITCHFH_TESTS})
   add_executable(${t} tests/${t}.cpp)
   target_link_libraries(${t} PRIVATE itchfh lfipc Threads::Threads)
