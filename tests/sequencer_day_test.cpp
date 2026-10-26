@@ -92,7 +92,7 @@ int main(int argc, char** argv) {
     struct rate {
         const char* name;
         double loss, request_loss;
-    } rates[] = {{"no loss", 0, 0}, {"0.01%", 0.0001, 0.01}, {"0.1%", 0.001, 0.01}, {"1%", 0.01, 0.01}};
+    } rates[] = {{"none", 0, 0}, {"0.01%", 0.0001, 0.01}, {"0.1%", 0.001, 0.01}, {"1%", 0.01, 0.01}};
     for (const rate& r : rates) {
         const auto t0 = std::chrono::steady_clock::now();
         handled via;
