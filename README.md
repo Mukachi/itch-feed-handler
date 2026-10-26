@@ -24,5 +24,10 @@ The sample day's 417,228,155 events, one CPU, ns per event, range over 3 runs. B
 <!-- /results -->
 
 <!-- results:handler-summary -->
-Event handler figures: not yet measured (design note 003).
+| Setup | M messages/s | p50 | p99 | p99.9 | max | Peak MB |
+|---|---|---|---|---|---|---|
+| reference handler, reference book | 1.19–1.20 | 816–820 | 2,038–2,046 | 2,839–2,854 | 516,292.9 µs–516,465.9 µs | 1,052 |
+| handler, default book | 7.15–7.23 | 151–152 | 543–558 | 801–817 | 17.7 µs–21.4 µs | 3,274 |
+
+Every message of the sample day (423,285,709), already decoded, one CPU, ns per message, range over 3 runs. By message type and the method: [RESULTS.md](RESULTS.md).
 <!-- /results -->

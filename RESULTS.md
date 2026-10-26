@@ -9,6 +9,7 @@ HP ProLiant DL380 Gen9, BIOS P89 (08/29/2024); 2 × Intel(R) Xeon(R) CPU E5-2699
 | Set | Runs | First run | Commit | Governor | Idle states enabled | Turbo | NUMA balancing | Boot isolation | Reserved CPUs |
 |---|---|---|---|---|---|---|---|---|---|
 | book (note 002) | 3 | 2026-10-25 22:22 UTC | ca6fcbd | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
+| handler (note 003) | 3 | 2026-10-26 13:54 UTC | 32fab72 | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 
 Every run met note 004's bench-mode conditions (each file's `environment.bench_mode`, checked before use) and was built clean; compiler and flags are in each file's `environment.build`. Ranges are min–max over a set's runs.
 
@@ -93,3 +94,53 @@ By event type (p99.9 left out where fewer than ten events lie above it):
 | refs C: direct array, levels C: price window | cancel | 4,848,464 | 86–87 | 279 | 556–557 |
 | refs C: direct array, levels C: price window | delete | 179,890,262 | 133 | 425 | 739–740 |
 | refs C: direct array, levels C: price window | replace | 36,730,406 | 197–198 | 619–620 | 912–914 |
+
+## The event handler (note 003)
+
+Every message of the sample day `01302020.NASDAQ_ITCH50.gz` (423,285,709), decoded first by the reference decoder into memory bound to the measured CPU's node, then handled on one pinned CPU (CPU 2): the handler with the default book (note 002) behind it, beside the reference handler with the reference book; each fresh for each of two passes, the heap handed back before each. Messages a second: the whole day handled untimed. Per message: each call timed between start() and stop(), unsubtracted (the clock's own cost is 16–17 ns at p50), the first 1,000,000 messages discarded as warm-up. Peak MB: the most resident memory added over the day. The sink counts its calls and does nothing else. 3 runs; ranges over them.
+
+| Setup | M messages/s | p50 | p99 | p99.9 | max | Peak MB |
+|---|---|---|---|---|---|---|
+| reference handler, reference book | 1.19–1.20 | 816–820 | 2,038–2,046 | 2,839–2,854 | 516,292.9 µs–516,465.9 µs | 1,052 |
+| handler, default book | 7.15–7.23 | 151–152 | 543–558 | 801–817 | 17.7 µs–21.4 µs | 3,274 |
+
+By message type (p99.9 left out where fewer than ten messages lie above it):
+
+| Setup | Message | In the day | p50 | p99 | p99.9 |
+|---|---|---|---|---|---|
+| reference handler, reference book | `S` System Event | 6 | – | – | – |
+| reference handler, reference book | `R` Stock Directory | 8,916 | – | – | – |
+| reference handler, reference book | `H` Stock Trading Action | 8,921 | – | – | – |
+| reference handler, reference book | `Y` Reg SHO | 9,068 | 264–279 | – | – |
+| reference handler, reference book | `L` Market Participant Position | 216,802 | 3,076–3,283 | – | – |
+| reference handler, reference book | `V` MWCB Decline Level | 1 | – | – | – |
+| reference handler, reference book | `K` IPO Quoting Period | 2 | – | – | – |
+| reference handler, reference book | `J` LULD Auction Collar | 5 | – | – | – |
+| reference handler, reference book | `A` Add Order | 184,735,355 | 765–768 | 1,791–1,825 | 2,978–2,999 |
+| reference handler, reference book | `F` Add Order, attributed | 1,875,350 | 700 | 2,264–2,293 | 4,485–4,550 |
+| reference handler, reference book | `E` Order Executed | 8,415,610 | 921–925 | 3,036–3,043 | 5,912–5,963 |
+| reference handler, reference book | `C` Order Executed with Price | 139,474 | 981–983 | 2,726–2,734 | 5,744–5,781 |
+| reference handler, reference book | `X` Order Cancel | 4,990,972 | 594–598 | 1,441–1,456 | 1,778–1,789 |
+| reference handler, reference book | `D` Order Delete | 180,285,101 | 805–813 | 1,918–1,929 | 2,388–2,402 |
+| reference handler, reference book | `U` Order Replace | 36,777,372 | 1,145–1,150 | 2,344–2,362 | 2,843–2,861 |
+| reference handler, reference book | `P` Trade (non-displayed) | 1,779,727 | 736–741 | 1,618–1,623 | 5,060–5,133 |
+| reference handler, reference book | `Q` Cross Trade | 17,835 | 845–850 | 2,734–2,755 | 4,310–4,550 |
+| reference handler, reference book | `I` NOII | 4,025,192 | 424–425 | 708–712 | 851–857 |
+| handler, default book | `S` System Event | 6 | – | – | – |
+| handler, default book | `R` Stock Directory | 8,916 | – | – | – |
+| handler, default book | `H` Stock Trading Action | 8,921 | – | – | – |
+| handler, default book | `Y` Reg SHO | 9,068 | 240–356 | – | – |
+| handler, default book | `L` Market Participant Position | 216,802 | 274–327 | – | – |
+| handler, default book | `V` MWCB Decline Level | 1 | – | – | – |
+| handler, default book | `K` IPO Quoting Period | 2 | – | – | – |
+| handler, default book | `J` LULD Auction Collar | 5 | – | – | – |
+| handler, default book | `A` Add Order | 184,735,355 | 149–150 | 469–484 | 624–664 |
+| handler, default book | `F` Add Order, attributed | 1,875,350 | 143 | 505–509 | 711–720 |
+| handler, default book | `E` Order Executed | 8,415,610 | 315–318 | 790–796 | 1,032–1,044 |
+| handler, default book | `C` Order Executed with Price | 139,474 | 286–290 | 700–702 | 907–922 |
+| handler, default book | `X` Order Cancel | 4,990,972 | 104 | 385–389 | 610–613 |
+| handler, default book | `D` Order Delete | 180,285,101 | 144–145 | 503–513 | 774–789 |
+| handler, default book | `U` Order Replace | 36,777,372 | 263–267 | 715–726 | 968–990 |
+| handler, default book | `P` Trade (non-displayed) | 1,779,727 | 220–221 | 599–600 | 824–831 |
+| handler, default book | `Q` Cross Trade | 17,835 | 217–218 | 581–586 | 800–803 |
+| handler, default book | `I` NOII | 4,025,192 | 44 | 350–352 | 421–423 |
