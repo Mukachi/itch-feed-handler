@@ -15,3 +15,7 @@ runs = ["decoder-dev-lnx01-20261026T160515Z.json", "decoder-dev-lnx01-20261026T1
 [sequencer]
 note = "005"
 runs = ["sequencer-dev-lnx01-20261026T200100Z.json", "sequencer-dev-lnx01-20261026T200307Z.json", "sequencer-dev-lnx01-20261026T200513Z.json", "sequencer-dev-lnx01-20261026T200720Z.json", "sequencer-dev-lnx01-20261026T200928Z.json", "sequencer-dev-lnx01-20261026T201134Z.json"]
+
+[snapshot]
+note = "006"
+runs = ["snapshot-dev-lnx01-20261026T212236Z.json", "snapshot-dev-lnx01-20261026T213409Z.json", "snapshot-dev-lnx01-20261026T214548Z.json"]

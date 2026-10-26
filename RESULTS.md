@@ -12,6 +12,7 @@ HP ProLiant DL380 Gen9, BIOS P89 (08/29/2024); 2 × Intel(R) Xeon(R) CPU E5-2699
 | handler (note 003) | 3 | 2026-10-26 13:54 UTC | 32fab72 | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | decoder (note 004) | 3 | 2026-10-26 16:05 UTC | a48804a | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | sequencer (note 005) | 6 | 2026-10-26 20:01 UTC | 695b3bf | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
+| snapshot (note 006) | 3 | 2026-10-26 21:22 UTC | 92bd97d | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 
 Every run met note 004's bench-mode conditions (each file's `environment.bench_mode`, checked before use) and was built clean; compiler and flags are in each file's `environment.build`. Ranges are min–max over a set's runs.
 
@@ -266,3 +267,19 @@ The sample day `01302020.NASDAQ_ITCH50.gz` packed by the packetizer into 9,358,8
 | the gap filled, 100 held delivered | 221–292 ns a packet | 22.4 µs–29.5 µs | – | – |
 | the gap filled, 1,000 held delivered | 213–265 ns a packet | 214.1 µs–265.6 µs | – | – |
 | the gap filled, 10,000 held delivered | 222–270 ns a packet | 2,218.2 µs–2,702.8 µs | – | – |
+
+## Snapshots (note 006)
+
+The sample day `01302020.NASDAQ_ITCH50.gz` followed by the snapshot server (the reference handler and book); at every 50 million messages and at the day's peak of live orders, a GLIMPSE 5.0 spin over SoupBinTCP built (the server's cost) and applied by a client, read, decoded and handled into a fresh default book (building that book is not counted), on one pinned CPU (CPU 2). Applying is what a recovery costs before the held feed is caught up (the sequencer's backlog figures). Every client's books equal to the server's. 3 runs; ranges over them.
+
+| At message | Live orders | Spin messages | Spin MB | Build ms | Apply ms |
+|---|---|---|---|---|---|
+| 50,000,001 | 1,713,137 | 1,739,865 | 70 | 948–990 | 302–361 |
+| 100,000,001 | 1,743,843 | 1,770,571 | 71 | 1,083–1,087 | 313–320 |
+| 150,000,001 | 1,759,505 | 1,786,233 | 72 | 1,045–1,049 | 321–328 |
+| 200,000,001 | 1,778,207 | 1,804,935 | 72 | 1,116–1,118 | 328–335 |
+| 250,000,001 | 1,779,495 | 1,806,223 | 73 | 1,041–1,043 | 330–338 |
+| 300,000,001 | 1,787,957 | 1,814,685 | 73 | 1,075 | 334–341 |
+| 350,000,001 | 1,771,672 | 1,798,400 | 72 | 1,095–1,097 | 333–340 |
+| 400,000,001 | 1,871,048 | 1,897,776 | 76 | 1,171–1,174 | 352–359 |
+| 412,349,206 (the peak) | 1,925,638 | 1,952,366 | 79 | 1,211–1,215 | 362–369 |
