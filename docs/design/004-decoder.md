@@ -1,6 +1,6 @@
 # 004 — ITCH decoder
 
-**Status:** Draft · **Updated:** 2026-10-26
+**Status:** Agreed · **Updated:** 2026-10-26
 
 ## Proposal
 
@@ -89,3 +89,4 @@ Delete (`D`, 43%) and Replace (`U`, 9%).
 | Date | Stage | Finding |
 |---|---|---|
 | 2026-10-26 | Draft | Written for review. The type mix from the sample day (note 002's Review): Add 44%, Delete 43%, Replace 9%, the rest 4% |
+| 2026-10-26 | Agreed | Approved by Shep, every decision as proposed (option A each): D1 three ways, the default from the figures; D2 a padded-input contract with unpadded entries beside; D3 type and length only; D4 the reference decoder as oracle, on the day and under libFuzzer; D5 by type in the day's order, mispredictions counted, and end to end with the handler |
