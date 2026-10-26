@@ -1,6 +1,6 @@
 # 007 — Receiver and framer
 
-**Status:** Agreed · **Updated:** 2026-10-26
+**Status:** Agreed (D1 amended) · **Updated:** 2026-10-26
 
 ## Proposal
 
@@ -36,7 +36,11 @@ flowchart LR
   `recvmmsg` in batches (up to 64 datagrams a call), each into its own buffer with the decoder's
   padding after it (note 004, D2: at least 32 readable bytes past every message, given here by a
   buffer of 1,500 + 64 bytes a datagram). *Alternative, measured beside it:* `recvmsg`, one
-  datagram a call.
+  datagram a call. *Amended (agreed with Shep, option A):* re-requests go from a second socket,
+  the request socket (unicast, any free port on the interface), so their answers come back on it,
+  out of the multicast queue; while the sequencer is gapped it is read first, otherwise it is left
+  alone. With one socket an answer waits behind every multicast datagram not yet read, so a
+  receiver behind the sender gave up (see Review).
 - **D2. Waiting.** *Proposed:* busy-polling the socket on the receiving CPU (the bench CPUs are
   reserved), with the kernel's own busy polling (`SO_BUSY_POLL`) measured on the card path, as the
   gateway did (its note 005, D2; over loopback it does nothing).
@@ -96,8 +100,8 @@ flowchart LR
 
 ## Tasks
 
-- [ ] The receiver (D1–D3, D8) and the sender with its re-request server (D6)
-- [ ] D4's two arrangements; D5's replay of recorded datagrams
+- [x] The receiver (D1–D3, D8) and the sender with its re-request server (D6)
+- [x] D4's two arrangements; D5's replay of recorded datagrams
 - [ ] `card-link` with a multicast route (D7)
 - [ ] The sample day over loopback and the card (S1–S4); S5's call-graph check
 - [ ] The benchmark and the report (S6)
@@ -108,3 +112,4 @@ flowchart LR
 |---|---|---|
 | 2026-10-26 | Draft | Written for review. On this machine today: `net.core.rmem_max` 4 MB (a receive buffer's ceiling without a sysctl), `busy_read` and `busy_poll` 0 |
 | 2026-10-26 | Agreed | Approved by Shep, every decision as proposed (option A each): D1 `recvmmsg` batches into padded buffers, `recvmsg` beside it; D2 busy-polling, `SO_BUSY_POLL` measured on the card; D3 the largest buffer allowed, drops counted, `rmem_max` raised only if shown needed; D4 one thread and two, measured; D5 recordings as received datagrams through the same path; D6 our sender with the re-request server; D7 loopback and the card; D8 kernel receive stamps; D9 the day over both paths; D10 cost, drop-free pace and latency |
+| 2026-10-26 | Agreed (building; amendment) | **Found by the feed test under TSan, D1 amended.** With the answers on the multicast socket (D1 as agreed, one socket for both), a receiver slower than the sender gave up: the kernel queues a socket's datagrams in arrival order, so each answer waited behind the multicast backlog, while the sequencer's retries (note 005, D2: 5, 1 ms apart) ran out; `lost` at 1,297 of 80,000 messages, all 6 requests answered. Reproduced without TSan (a receiver reading one datagram a call 50 µs apart, ~20k/s against the sender's 50k/s, 2% lost); passed with 50 ms retries, so timing. On the real feed, any lag past ~5 ms (the day's peaks) would fall back to a snapshot. Options put to Shep: A a request socket for requests and answers, read first while gapped; B one socket, retry time counted only once it is drained (recovery still waits for the backlog); C longer retries (moves the threshold). **A agreed.** `feed_test` keeps the slow receiver as a regression case: it fails with requests sent from the multicast socket (0 answers ahead of the backlog, `lost`) and passes with the request socket (43 of 43 answered, ended, the books the reference's). The two sockets' kernel drop counts are kept apart (`kernel_drops`, `answer_drops`) |
