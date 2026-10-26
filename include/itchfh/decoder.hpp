@@ -319,4 +319,7 @@ inline decode_status decode_simd_unpadded(const unsigned char* p, std::size_t n,
 
 static_assert(sizeof(message) == 64, "decode_simd writes the struct as four 16-byte lanes");
 
+// The default (note 004, D1, chosen from the measured figures): B.
+inline decode_status decode(const unsigned char* p, std::size_t n, message& m) noexcept { return decode_table(p, n, m); }
+
 }  // namespace itchfh
