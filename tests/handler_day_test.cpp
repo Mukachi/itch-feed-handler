@@ -5,8 +5,9 @@
 // in lockstep. After every message: the same sink calls. Every 10 million
 // messages and at the end: every instrument's directory entry, trade figures
 // and status, the market state and the counts, and both books in full.
-// Also, counted here on its own: how many executions or trades arrive with a
-// match number already counted (S3: each such is one trade, not two).
+// Also, counted here on its own (S3): match numbers seen again, and whether the
+// first sighting was a non-printable execution (then the trade is counted at
+// the printable one, once) or a counted one (then it must not count again).
 //
 // Usage: handler_day_test [day.gz]
 #include "check.hpp"
@@ -61,7 +62,9 @@ int main(int argc, char** argv) {
     auto ref = std::make_unique<reference_handler<reference_book, recording_sink>>(*ref_book, ref_sink);
 
     std::vector<unsigned char> buf(1 << 16);
-    std::uint64_t n = 0, undecoded = 0, checkpoints = 0, sides_again = 0;
+    std::uint64_t n = 0, undecoded = 0, checkpoints = 0, after_counted = 0, after_uncounted = 0;
+    std::unordered_set<std::uint64_t> seen_once;  // match numbers seen, counted or not
+    seen_once.reserve(1 << 24);
     std::unordered_set<std::uint64_t> counted;  // match numbers already counted, kept here on its own
     counted.reserve(1 << 24);
     std::string problem;
@@ -103,8 +106,9 @@ int main(int argc, char** argv) {
             printable = m.Q.shares > 0;
         }
         if (match) {
-            if (counted.contains(match)) ++sides_again;
-            else if (printable) counted.insert(match);
+            if (counted.contains(match)) ++after_counted;
+            else if (!seen_once.insert(match).second) ++after_uncounted;
+            if (printable && !counted.contains(match)) counted.insert(match);
         }
         fast->on(m);
         ref->on(m);
@@ -129,10 +133,11 @@ int main(int argc, char** argv) {
           std::to_string(n) + " messages, every one decoded; the handler and the reference handler alike after every message, at " +
               std::to_string(checkpoints) + " checkpoints and at the end (every instrument, the counts, the market state, both books)" +
               (problem.empty() ? "" : " (" + problem + ")"));
-    check(trades == counted.size() && sides_again > 0,
+    check(trades == counted.size() && after_uncounted + after_counted > 0,
           "S3: " + std::to_string(trades) + " trades, one per match number counted (" + std::to_string(counted.size()) +
-              " here on their own); " + std::to_string(sides_again) + " executions or trades arrived with a match number already counted, "
-              "not counted again; volume " + std::to_string(volume) + " shares");
+              " here on their own); match numbers seen again: " + std::to_string(after_uncounted) +
+              " after a non-printable execution (counted once, at the printable one), " + std::to_string(after_counted) +
+              " after a counted trade (not counted again); volume " + std::to_string(volume) + " shares");
     check(c.unknown_type == 0 && c.no_directory == 0 && c.unknown_break == 0 && c.phase_out_of_order == 0 && c.table_full == 0 && c.bad_field == 0,
           "S4 on the day: second directory entries " + std::to_string(c.second_directory) +
               "; no unknown types, messages without a directory entry, unknown breaks, out-of-order phases or full tables");

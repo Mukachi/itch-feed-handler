@@ -45,9 +45,11 @@ publish (note 008).
 - One instrument gets a second directory message during the day (locate 2396, ELAT, at 08:17).
 - **Match numbers repeat.** 10,347,476 distinct match numbers, 5,170 of them twice: first on an
   Executed with Price (`C`), then on an Executed (`E`, 5,037), a Trade (`P`, 127) or another `C` (6).
-  Every repeat has the same shares on the same instrument: one trade between two orders, each side
-  reported. **Counting volume by execution counts those trades twice;** it has to be counted by
-  match number.
+  Every repeat has the same shares on the same instrument: one trade reported twice. **Corrected
+  when built** (Review): every one of them is first a non-printable `C`, then a printable report,
+  so counting printable reports only, as the specification says, already counts each once.
+  Counting by match number (D5) stays, as the rule that holds even when it does not: a trade
+  reported printable twice would otherwise count twice.
 - 8,615 executions are marked non-printable (`C` with Printable `N`), 4.2 million shares. The
   specification says they are included in a later bulk print (`Q`), so they are left out of
   volume. Not an invariant, though: the day's `Q` prints total 132 million shares, far more than
@@ -145,7 +147,7 @@ flowchart LR
       against the specification's layouts
 - [x] The directory (D4), trades (D5) and status (D6); the handler and its sink (D2, D3)
 - [x] The reference handler (D7); hand-built tests of every type (S1, S3, S4)
-- [ ] The sample day through both, from the reference decoder (S2, S3)
+- [x] The sample day through both, from the reference decoder (S2, S3)
 - [x] S5's call-graph check
 - [ ] The benchmark and the report (S6)
 
@@ -156,3 +158,4 @@ flowchart LR
 | 2026-10-26 | Draft | Written for review from TotalView-ITCH 5.0, sections 1.1 to 1.8 (read today). The sample day's facts above come from a throwaway program over the whole day, outside the repo: no order before its directory entry; one second directory entry (locate 2396, ELAT, 08:17); 10,347,476 distinct match numbers, 5,170 repeated, each repeat the same shares and instrument (one trade, both sides reported); 8,615 non-printable executions (4,170,381 shares); `Q` prints 132,085,647 shares, 12,060 of the 17,835 with zero shares; no broken trades |
 | 2026-10-26 | Agreed | Approved by Shep, every decision as proposed (option A each): D1 decoded structs per type and a reference decoder; D2 a sink; D3 the order looked up before an execution, note 002 unchanged; D4 directory by locate with a symbol index; D5 trades by match number; D6 status per instrument and market-wide; D7 a reference handler; D8 measured beside it |
 | 2026-10-26 | Agreed (tasks) | **Built so far.** `messages.hpp` (every type's decoded form, 64 bytes as a tagged union), `reference_decoder.hpp`; `reference_decoder_test`: every type built byte by byte from a table of the specification's offsets transcribed apart from the decoder, each table checked to tile its type's length, every field compared; wrong lengths and unknown types refused (26 checks). `fixed_map.hpp` (fixed open addressing, never erased within a day), `directory.hpp`, `trades.hpp` (by match number), `market_status.hpp`, `handler.hpp` (the sink of D2; D3's lookup before an execution), `reference_handler.hpp` (standard containers). `handler_test`: every type by hand in both handlers, S3's trade rules, S4's edge cases, and 50,000 random messages of every type with both in lockstep (sink calls, counts, state); shown to catch two faults put in on purpose (a match number counted at every sighting; every C taken as printable). Clean under ASan/UBSan and TSan. S5: `check_hot_path` holds the handler on the default book (with a sink that does nothing) to note 002's rule: five functions, only memory functions and the stack protector. `handler_bench` and the report's handler section written; a check run on the day's first 20 million messages, outside bench mode: 8.31 M messages a second against the reference handler's 1.71 M, nothing refused |
+| 2026-10-26 | Agreed (S2, S3) | **The sample day through both handlers** (`handler_day_test`): all 423,285,709 messages decoded, the handler (default book) and the reference handler (reference book) alike after every message and at 42 checkpoints and the end (every instrument, the counts, the market state, both books in full); one second directory entry, no other edge case; the System Events in order; nothing live at the close; 657 s. **S3's expectation was wrong, and the Draft's reading of the day with it.** The test expected executions arriving with a match number already counted, and found none. A throwaway pass over the day showed why: each of the 5,170 repeated match numbers is first a non-printable `C` (not counted), then a printable `E` (5,037), `P` (127) or `C` (6), counted there, once. So the repeats never risked double counting when only printable reports count; the Draft said counting by execution would count them twice, true only if non-printable reports were counted too. Of the day's 8,615 non-printable executions, then, 5,170 are printed by the other report of the same match and 3,445 by a bulk print. D5's rule stays (a trade reported printable twice), tested by hand; the day's test now counts both kinds of repeat. Re-run: all checks pass (5,170 seen again after a non-printable execution, none after a counted trade); 10,331,971 trades, 1,302,126,625 shares; 642 s |
