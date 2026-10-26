@@ -17,4 +17,4 @@ Only Spec and Review are mandatory. Any section can be one line.
 |---|---|---|
 | [001](design/001-scope.md) | Scope and plan | Agreed |
 | [002](design/002-order-book.md) | Order book | Measured |
-| [003](design/003-events-directory-status.md) | Event handler, instrument directory, trades and market status | Agreed |
+| [003](design/003-events-directory-status.md) | Event handler, instrument directory, trades and market status | Measured |
