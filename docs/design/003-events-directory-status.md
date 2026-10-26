@@ -1,6 +1,6 @@
 # 003 — Event handler, instrument directory, trades and market status
 
-**Status:** Draft · **Updated:** 2026-10-26
+**Status:** Agreed · **Updated:** 2026-10-26
 
 ## Proposal
 
@@ -154,3 +154,4 @@ flowchart LR
 | Date | Stage | Finding |
 |---|---|---|
 | 2026-10-26 | Draft | Written for review from TotalView-ITCH 5.0, sections 1.1 to 1.8 (read today). The sample day's facts above come from a throwaway program over the whole day, outside the repo: no order before its directory entry; one second directory entry (locate 2396, ELAT, 08:17); 10,347,476 distinct match numbers, 5,170 repeated, each repeat the same shares and instrument (one trade, both sides reported); 8,615 non-printable executions (4,170,381 shares); `Q` prints 132,085,647 shares, 12,060 of the 17,835 with zero shares; no broken trades |
+| 2026-10-26 | Agreed | Approved by Shep, every decision as proposed (option A each): D1 decoded structs per type and a reference decoder; D2 a sink; D3 the order looked up before an execution, note 002 unchanged; D4 directory by locate with a symbol index; D5 trades by match number; D6 status per instrument and market-wide; D7 a reference handler; D8 measured beside it |
