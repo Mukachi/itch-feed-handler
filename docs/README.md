@@ -19,3 +19,4 @@ Only Spec and Review are mandatory. Any section can be one line.
 | [002](design/002-order-book.md) | Order book | Measured |
 | [003](design/003-events-directory-status.md) | Event handler, instrument directory, trades and market status | Measured |
 | [004](design/004-decoder.md) | ITCH decoder | Measured |
+| [005](design/005-sequencing-recovery.md) | Sequencing and recovery | Draft |
