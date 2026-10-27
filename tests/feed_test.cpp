@@ -127,9 +127,12 @@ outcome run(const world& w, std::uint16_t port, double drop, bool two, bool batc
         return o;
     }
     sender_config sc;
-    sc.packets_per_s = overflow ? 1'000'000 : 50'000;
+    // Slow enough for a sanitized receiver (TSan ~10x slower) not to overflow CI's small buffer; the
+    // slow receiver needs a sender faster than it, and the kernel-drop case one far faster.
+    sc.packets_per_s = overflow ? 1'000'000 : slow ? 50'000 : 5'000;
     sc.drop = drop;
     sc.heartbeat_ns = 100'000'000;  // within the sequencer's 2 s staleness, and quick
+    client c;  // built before anything is sent (under TSan it takes long enough for the buffer to overflow)
     mold_sender s(*w.store, tx, sc);
     std::atomic<bool> stop{false};
     std::thread st([&] {
@@ -144,7 +147,6 @@ outcome run(const world& w, std::uint16_t port, double drop, bool two, bool batc
         }
         s.run(stop);
     });
-    client c;
     if (overflow) std::this_thread::sleep_for(std::chrono::milliseconds(5));
     if (two) {
         feed_two<quiet_handler> f(rx, *c.h, small_seq());
@@ -225,7 +227,9 @@ void slow_receiver(const world& w) {
 void malformed_datagrams(const world& w) {
     const outcome o = run(w, 26440, 0, false, true, true);
     check(o.malformed == 2 && o.books.empty() && o.state == feed_state::ended,
-          "S3: a datagram shorter than a MoldUDP64 header and one whose blocks overrun it: both counted as malformed, never applied");
+          "S3: a datagram shorter than a MoldUDP64 header and one whose blocks overrun it: both counted as malformed, never applied (" +
+              std::to_string(o.malformed) + " malformed; state " + std::to_string(static_cast<int>(o.state)) + "; " +
+              std::to_string(o.counts.kernel_drops) + " kernel drops" + (o.books.empty() ? "" : "; " + o.books) + ")");
 }
 
 // D5: the datagrams as received, replayed into a fresh sequencer: the same books.
@@ -239,12 +243,9 @@ void recorded_replay(const world& w) {
     udp::sender tx;
     tx.open(ro.group, 26450, "127.0.0.1", 26451, why);
     sender_config sc;
-    sc.packets_per_s = 50'000;
+    sc.packets_per_s = 5'000;
     sc.drop = 0.02;
     sc.heartbeat_ns = 100'000'000;
-    mold_sender s(*w.store, tx, sc);
-    std::atomic<bool> stop{false};
-    std::thread st([&] { s.run(stop); });
     std::vector<std::vector<unsigned char>> recorded;
     struct recording {
         std::unique_ptr<client> c = std::make_unique<client>();
@@ -258,6 +259,9 @@ void recorded_replay(const world& w) {
     } live;
     live.rx = &rx;
     sequencer<recording> seq(live, small_seq());
+    mold_sender s(*w.store, tx, sc);  // started once the client is built
+    std::atomic<bool> stop{false};
+    std::thread st([&] { s.run(stop); });
     auto d = std::make_unique<udp::datagram[]>(64);
     const std::int64_t give_up = monotonic_ns() + 60'000'000'000;
     while (seq.state() != feed_state::ended && seq.state() != feed_state::lost && monotonic_ns() < give_up) {
