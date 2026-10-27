@@ -30,7 +30,7 @@ enum counter : std::uint32_t {
     datagrams, answers, messages, undecoded, kernel_drops, answer_drops,
     packets, malformed, other_session, gaps, requests, retried, hold_full, held_now, duplicate_messages,
     book_bad,           // events refused by the book (note 002's D5), every kind
-    consumers_live, publisher_overruns,
+    consumers_live, publisher_overruns, consumers_remote,
     recorded, unrecorded, recorder_backlog, recorded_bytes,
     refreshes,
     n_counters
@@ -38,14 +38,15 @@ enum counter : std::uint32_t {
 inline constexpr const char* names[n_counters] = {
     "feed_state", "since_datagram_ms", "datagrams", "answers", "messages", "undecoded", "kernel_drops", "answer_drops",
     "packets", "malformed", "other_session", "gaps", "requests", "retried", "hold_full", "held_now", "duplicate_messages",
-    "book_bad", "consumers_live", "publisher_overruns", "recorded", "unrecorded", "recorder_backlog", "recorded_bytes", "refreshes"};
+    "book_bad", "consumers_live", "publisher_overruns", "consumers_remote", "recorded", "unrecorded", "recorder_backlog", "recorded_bytes", "refreshes"};
 
 using values = std::uint64_t[n_counters];
 
 // Health: what is wrong now. Kernel drops and refused events are shown but
 // do not by themselves make the feed unhealthy (they are recovered, or marked).
 enum health_bit : std::uint32_t {
-    feed_stale = 1, feed_lost = 2, feed_gapped = 4, silent = 8, recorder_unrecorded = 16, publisher_overrun = 32
+    feed_stale = 1, feed_lost = 2, feed_gapped = 4, silent = 8, recorder_unrecorded = 16, publisher_overrun = 32,
+    consumer_remote = 64  // a consumer on another NUMA node than the publisher's (note 008, Review)
 };
 inline std::uint32_t health(const values& v) {
     const auto s = static_cast<feed_state>(v[feed_state_now]);
@@ -56,14 +57,15 @@ inline std::uint32_t health(const values& v) {
     if (s != feed_state::ended && v[datagrams] > 0 && v[since_datagram_ms] > 2000) h |= silent;
     if (v[unrecorded] > 0) h |= recorder_unrecorded;
     if (v[publisher_overruns] > 0) h |= publisher_overrun;
+    if (v[consumers_remote] > 0) h |= consumer_remote;
     return h;
 }
-// Unhealthy: stale, lost, silent, a datagram unrecorded or a consumer overrun
-// (gapped alone is recovery under way).
+// Unhealthy: stale, lost, silent, a datagram unrecorded, a consumer overrun or
+// one on another node (gapped alone is recovery under way).
 inline bool unhealthy(std::uint32_t h) { return (h & ~static_cast<std::uint32_t>(feed_gapped)) != 0; }
 
 inline constexpr std::uint64_t block_magic = 0x6974636866686D6EULL;  // "itchfhmn"
-inline constexpr std::uint32_t block_version = 1;
+inline constexpr std::uint32_t block_version = 2;  // 2: consumers_remote
 
 struct alignas(64) block_layout {
     std::uint64_t magic;
@@ -189,6 +191,7 @@ void gather(values& v, Feed& f, const Book& book, const Publisher* pub, const Re
         for (int c = 0; c < 8; ++c) live += pub->slot(c) == 4;  // pub::slot_live
         v[consumers_live] = live;
         v[publisher_overruns] = pub->overruns();
+        v[consumers_remote] = pub->remote_consumers();
     }
     if (rec) {
         v[recorded] = rec->written();

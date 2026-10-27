@@ -15,6 +15,7 @@
 #include <itchfh/consumer.hpp>
 #include <itchfh/encoder.hpp>
 #include <itchfh/handler.hpp>
+#include <itchfh/monitoring.hpp>
 #include <itchfh/publisher.hpp>
 #include <itchfh/sequencer.hpp>
 #include <itchfh/session_store.hpp>
@@ -303,6 +304,38 @@ void overrun_and_rejoin(const std::vector<message>& all) {
               " full) while another keeps up untouched; rejoined, it is reset and replayed, and both have the handler's books");
 }
 
+// Note 008's Review: a consumer on another node is counted, and flagged unhealthy.
+void remote_consumer() {
+    const std::string name = segment("node");
+    publishing w;
+    if (!w.open(name)) return;
+    pub::consumer c;
+    std::string why;
+    if (!c.attach(name, why)) return;
+    if (c.publisher_node() < 0) {  // no NUMA topology to be seen (a container may hide it)
+        check(true, "note 008, Review: a consumer on another node: n/a, no NUMA topology visible here");
+        return;
+    }
+    const bool pinned = c.pin_to_publisher_node();
+    const bool same = pub::node_of(::sched_getcpu()) == c.publisher_node();
+    w.p->tick(2'000'000'000);
+    const std::uint64_t before = w.p->pub.remote_consumers();
+    // Its slot made to say another node, as a consumer there would report it.
+    pub::table_segment t;
+    if (!t.attach(name, why)) return;
+    t.layout()->slots[c.index()].node.store(c.publisher_node() + 1, std::memory_order_release);
+    w.p->tick(4'000'000'000);
+    const std::uint64_t after = w.p->pub.remote_consumers();
+    mon::values v{};
+    v[mon::feed_state_now] = static_cast<std::uint64_t>(feed_state::live);
+    v[mon::consumers_remote] = after;
+    check(c.publisher_node() >= 0 && pinned && same && before == 0 && after == 1 && (mon::health(v) & mon::consumer_remote) &&
+              mon::unhealthy(mon::health(v)),
+          "note 008, Review: the publisher's node in the table (" + std::to_string(c.publisher_node()) + "); a consumer pinned to it "
+          "reports it and is not counted remote; one reporting another node is, within the second's sweep, and the monitoring "
+          "calls the feed unhealthy");
+}
+
 // S4: the seqlock, a writer and two readers on other threads.
 void seqlock() {
     std::vector<pub::table_entry> e(16);
@@ -340,6 +373,7 @@ int main() {
     another_process(all);
     gap_and_snapshot(all);
     overrun_and_rejoin(all);
+    remote_consumer();
     seqlock();
     return itchfh::test::result();
 }

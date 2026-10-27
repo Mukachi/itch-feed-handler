@@ -16,6 +16,7 @@
 #include <memory>
 #include <string>
 
+#include <sched.h>
 #include <unistd.h>
 
 namespace itchfh::pub {
@@ -46,6 +47,7 @@ public:
             index_ = i;
             consumed_ = slot_->consumed.load(std::memory_order_relaxed);
             slot_->pid.store(static_cast<std::int32_t>(::getpid()), std::memory_order_release);
+            report_node();
             join();
             return true;
         }
@@ -76,6 +78,34 @@ public:
         return static_cast<feed_state>(f & 0xFF);
     }
     int index() const { return index_; }
+    // The publisher's NUMA node. A consumer on another node slows every push
+    // the publisher makes, and with it the feed (note 008, Review): pin to it.
+    int publisher_node() const { return table_.layout()->header.node; }
+    // Restricts this thread to the publisher's node's CPUs; false if it cannot.
+    bool pin_to_publisher_node() {
+        const int node = publisher_node();
+        if (node < 0) return false;
+        cpu_set_t set;
+        CPU_ZERO(&set);
+        // cpulist: "0-21,44-65"
+        const std::string list = node_cpus(node);
+        for (std::size_t at = 0; at < list.size();) {
+            const std::size_t comma = list.find(',', at);
+            const std::string part = list.substr(at, comma == std::string::npos ? std::string::npos : comma - at);
+            const std::size_t dash = part.find('-');
+            const int lo = std::stoi(part.substr(0, dash)), hi = dash == std::string::npos ? lo : std::stoi(part.substr(dash + 1));
+            for (int c = lo; c <= hi; ++c) CPU_SET(c, &set);
+            if (comma == std::string::npos) break;
+            at = comma + 1;
+        }
+        if (::sched_setaffinity(0, sizeof(set), &set) != 0) return false;
+        report_node();
+        return true;
+    }
+    // Tells the publisher which node this consumer is on now (at attach, and after moving).
+    void report_node() {
+        if (slot_) slot_->node.store(node_of(::sched_getcpu()), std::memory_order_release);
+    }
 
 private:
     void join() {

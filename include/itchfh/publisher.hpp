@@ -73,6 +73,12 @@ public:
         }
         if (now - last_sweep_ >= 1'000'000'000) {
             last_sweep_ = now;
+            remote_ = 0;
+            for (int c = 0; c < pub::max_consumers; ++c)
+                if (local_[c] != pub::slot_free) {
+                    const std::int32_t n = t_->slots[c].node.load(std::memory_order_acquire);
+                    remote_ += n >= 0 && t_->header.node >= 0 && n != t_->header.node;
+                }
             for (int c = 0; c < pub::max_consumers; ++c)
                 if (local_[c] != pub::slot_free && !pub::table_segment::alive(t_->slots[c].pid.load(std::memory_order_acquire))) {
                     t_->slots[c].state.store(pub::slot_free, std::memory_order_release);
@@ -177,6 +183,8 @@ public:
     }
 
     std::uint64_t overruns() const { return overruns_; }
+    // Consumers on another NUMA node than the publisher's, as of the last sweep (once a second).
+    std::uint64_t remote_consumers() const { return remote_; }
     // Updates sent to consumer `c` not yet read (for a test or benchmark to pace by; the publisher never waits).
     std::uint64_t behind(int c) const { return t_ ? pushed_[c] - t_->slots[c].consumed.load(std::memory_order_acquire) : 0; }
     std::uint32_t slot(int c) const { return local_[c]; }
@@ -295,7 +303,7 @@ private:
     std::unique_ptr<std::uint64_t[][7]> mirror_;
     std::uint8_t last_rel_[pub::instruments] = {};
     feed_state feed_ = feed_state::waiting;
-    std::uint64_t seq_ = 0, ts_ = 0, last_seq_ = 0, overruns_ = 0;
+    std::uint64_t seq_ = 0, ts_ = 0, last_seq_ = 0, overruns_ = 0, remote_ = 0;
     bool have_last_ = false, muted_ = false;
     std::int64_t last_sweep_ = 0;
 };

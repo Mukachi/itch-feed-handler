@@ -16,11 +16,14 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <new>
 #include <string>
 #include <type_traits>
 
 #include <fcntl.h>
+#include <sched.h>
 #include <signal.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -124,6 +127,7 @@ enum slot_state : std::uint32_t { slot_free = 0, slot_claimed, slot_join, slot_r
 struct alignas(128) consumer_slot {
     std::atomic<std::uint32_t> state{slot_free};
     std::atomic<std::int32_t> pid{0};
+    std::atomic<std::int32_t> node{-1};  // the NUMA node the consumer runs on, as it reports it
     alignas(64) std::atomic<std::uint64_t> consumed{0};  // updates read, written by the consumer
 };
 
@@ -144,7 +148,7 @@ struct entry_view {
 };
 
 inline constexpr std::uint64_t table_magic = 0x6974636866687462ULL;  // "itchfhtb"
-inline constexpr std::uint32_t table_version = 1;
+inline constexpr std::uint32_t table_version = 2;  // 2: the publisher's node, each consumer's (note 008, Review)
 inline constexpr std::size_t instruments = 65'536;
 
 struct alignas(128) table_header {
@@ -152,6 +156,7 @@ struct alignas(128) table_header {
     std::uint32_t version;
     std::atomic<std::uint32_t> ready;
     std::int32_t creator_pid;
+    std::int32_t node;  // the publisher's NUMA node: a consumer elsewhere slows every push (note 008, Review)
     std::uint32_t consumers;
     std::uint64_t ring_capacity;
     std::atomic<std::uint64_t> feed;  // feed_state | next expected << 8
@@ -162,6 +167,22 @@ struct table_layout {
     table_entry entries[instruments];
 };
 static_assert(std::atomic<std::uint64_t>::is_always_lock_free);
+
+// The NUMA node of a CPU (-1 if unknown), and a node's CPUs, from sysfs.
+inline int node_of(int cpu) {
+    std::error_code ec;
+    for (const auto& e : std::filesystem::directory_iterator("/sys/devices/system/cpu/cpu" + std::to_string(cpu), ec)) {
+        const std::string n = e.path().filename().string();
+        if (n.rfind("node", 0) == 0 && n.size() > 4 && n.find_first_not_of("0123456789", 4) == std::string::npos) return std::stoi(n.substr(4));
+    }
+    return -1;
+}
+inline std::string node_cpus(int node) {
+    std::ifstream f("/sys/devices/system/node/node" + std::to_string(node) + "/cpulist");
+    std::string v;
+    std::getline(f, v);
+    return v;
+}
 
 // The table's segment: created by the publisher, attached by consumers.
 class table_segment {
@@ -200,6 +221,7 @@ public:
         t->header.magic = table_magic;
         t->header.version = table_version;
         t->header.creator_pid = static_cast<std::int32_t>(::getpid());
+        t->header.node = node_of(::sched_getcpu());
         t->header.consumers = max_consumers;
         t->header.ring_capacity = ring_capacity;
         t->header.ready.store(1, std::memory_order_release);

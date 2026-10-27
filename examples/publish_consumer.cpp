@@ -1,8 +1,8 @@
-// An example consumer of the publisher (note 008, D7), its own process:
-// attaches to the state table and a ring, keeps books from the updates
-// (pub::books), rejoins after an overrun, and once a second prints what it has
-// seen and checks the state table's best bid and ask against its books. Ends
-// at the feed's end, or after the seconds given.
+// An example consumer of the publisher (note 008, D7), its own process, on
+// the publisher's NUMA node: attaches to the state table and a ring, keeps
+// books from the updates (pub::books), rejoins after an overrun, and once a
+// second prints what it has seen and checks the state table's best bid and
+// ask against its books. Ends at the feed's end, or after the seconds given.
 // Design: docs/design/008-publication.md
 //
 // Usage: publish_consumer <table name, e.g. /itchfh-pub> [seconds]
@@ -26,7 +26,10 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "publish_consumer: %s\n", why.c_str());
         return 1;
     }
-    std::printf("publish_consumer: slot %d of %s\n", c.index(), argv[1]);
+    // On the publisher's node: from another, every push the publisher makes is slowed (note 008, Review).
+    const bool pinned = c.pin_to_publisher_node();
+    std::printf("publish_consumer: slot %d of %s, %s node %d\n", c.index(), argv[1], pinned ? "on the publisher's" : "NOT on the publisher's",
+                c.publisher_node());
     pub::books b;
     pub::update u;
     std::uint64_t rejoins = 0;
