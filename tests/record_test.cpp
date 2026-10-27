@@ -288,13 +288,25 @@ void live_and_replayed() {
     replayed.store(true, std::memory_order_release);
     reader_thread.join();
     const std::uint64_t d1 = pub::digest_of(*bk), d2 = pub::digest_of(*bk2);
-    check(!live.c.overrun() && !again.c.overrun() && f.counts().messages == all.size() && s.counts().dropped > 0 && rr.complete && rr.messages == all.size() && d1 == d2 &&
-              live.b.digest() == d1 && again.b.digest() == d2 && live.h == again.h && live.feed_updates == again.feed_updates &&
-              counters,
+    // Each condition named, so a failure (as in CI under TSan) says which.
+    const std::pair<const char*, bool> conds[] = {
+        {"live not overrun", !live.c.overrun()}, {"replay not overrun", !again.c.overrun()},
+        {"every message live", f.counts().messages == all.size()}, {"sender dropped", s.counts().dropped > 0},
+        {"replay complete", rr.complete}, {"every message replayed", rr.messages == all.size()}, {"books live = replay", d1 == d2},
+        {"live consumer's books", live.b.digest() == d1}, {"replay consumer's books", again.b.digest() == d2},
+        {"updates byte for byte", live.h == again.h}, {"feed updates", live.feed_updates == again.feed_updates},
+        {"monitoring counters", counters}};
+    std::string failed;
+    for (const auto& [name, ok] : conds)
+        if (!ok) failed += std::string(failed.empty() ? " (failed: " : ", ") + name;
+    if (!failed.empty())
+        failed += "; feed updates " + std::to_string(live.feed_updates) + "/" + std::to_string(again.feed_updates) + ", replay state " +
+                  std::to_string(static_cast<int>(rr.state)) + ", held " + std::to_string(rr.held) + ", skipped " + std::to_string(rr.skipped) + ")";
+    check(failed.empty(),
           "S1 in small: " + std::to_string(all.size()) + " messages over loopback multicast, " + std::to_string(s.counts().dropped) +
               " packets dropped by the sender and recovered, " + std::to_string(r.written()) + " datagrams recorded from both "
               "sockets; replayed from the file: complete, the same books, the same published updates (" +
-              std::to_string(live.b.updates) + ", byte for byte); the monitoring block's counters the components' own, healthy at the end");
+              std::to_string(live.b.updates) + ", byte for byte); the monitoring block's counters the components' own, healthy at the end" + failed);
     std::filesystem::remove(path);
 }
 
