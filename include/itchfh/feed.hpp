@@ -33,25 +33,32 @@ namespace itchfh {
 
 struct feed_counts {
     std::uint64_t datagrams = 0, answers = 0, messages = 0, undecoded = 0, kernel_drops = 0, answer_drops = 0, calls = 0, empty_calls = 0;
+    std::int64_t last_ns = 0;  // monotonic, the last datagram from either socket (note 009's monitoring)
 };
 
 struct no_probe {
     void handled(std::int64_t) {}
 };
+// What feed_one records with (note 009's recorder; by default nothing).
+struct no_recorder {
+    void record(const udp::datagram&, std::uint8_t) {}
+};
 
 // The answers waiting on the request socket, into the sequencer.
-template <class Seq>
-void take_answers(udp::receiver& rx, Seq& seq, udp::datagram* d, feed_counts& c, std::int64_t now, std::int64_t& stamp) {
+template <class Seq, class Recorder = no_recorder>
+void take_answers(udp::receiver& rx, Seq& seq, udp::datagram* d, feed_counts& c, std::int64_t now, std::int64_t& stamp,
+                  Recorder* rec = nullptr) {
     const int n = rx.receive_answers(d, udp::receiver::max_batch);
     for (int i = 0; i < n; ++i) {
         ++c.answers;
         if (d[i].drops > c.answer_drops) c.answer_drops = d[i].drops;
         stamp = d[i].kernel_ns;
+        if (rec) rec->record(d[i], 1);
         seq.on_packet(d[i].bytes, d[i].length, now);
     }
 }
 
-template <class Handler, class Probe = no_probe>
+template <class Handler, class Probe = no_probe, class Recorder = no_recorder>
 class feed_one {
 public:
     // batch: recvmmsg; the default is a datagram a call (recvmsg), the quicker at
@@ -62,14 +69,16 @@ public:
     // One pass: whatever datagrams are waiting, then the sequencer's timers.
     void poll() {
         const std::int64_t now = monotonic_ns();
-        if (seq_.state() == feed_state::gapped) take_answers(rx_, seq_, d_.get(), counts_, now, stamp_);
+        if (seq_.state() == feed_state::gapped) take_answers(rx_, seq_, d_.get(), counts_, now, stamp_, rec_);
         int n = batch_ ? rx_.receive_batch(d_.get(), udp::receiver::max_batch) : (rx_.receive_one(d_[0]) ? 1 : 0);
         ++counts_.calls;
         if (n == 0) ++counts_.empty_calls;
+        else counts_.last_ns = now;
         for (int i = 0; i < n; ++i) {
             ++counts_.datagrams;
             if (d_[i].drops > counts_.kernel_drops) counts_.kernel_drops = d_[i].drops;
             stamp_ = d_[i].kernel_ns;
+            if (rec_) rec_->record(d_[i], 0);
             seq_.on_packet(d_[i].bytes, d_[i].length, now);
         }
         seq_.on_tick(now);
@@ -82,6 +91,8 @@ public:
     auto& seq() { return seq_; }
     const feed_counts& counts() const { return counts_; }
     Probe& probe() { return probe_; }
+    // Every datagram, from either socket, to `r` as it is read (note 009).
+    void set_recorder(Recorder& r) { rec_ = &r; }
 
     // A handler that publishes (note 008) is given each message's sequence
     // number and the sequencer's changes of state.
@@ -113,6 +124,7 @@ private:
     std::unique_ptr<udp::datagram[]> d_;
     feed_counts counts_;
     Probe probe_;
+    Recorder* rec_ = nullptr;
     std::int64_t stamp_ = 0;  // the kernel's receive time of the datagram being sequenced
 
 public:

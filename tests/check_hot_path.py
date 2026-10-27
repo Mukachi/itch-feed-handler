@@ -1,4 +1,4 @@
-"""S4 of note 002, S5 of notes 003, 005, 007 and 008, and S3 of note 004, checked in the compiled code.
+"""S4 of note 002, S5 of notes 003, 005, 007, 008 and 009, and S3 of note 004, checked in the compiled code.
 Design: docs/design/002-order-book.md, docs/design/003-events-directory-status.md
 
 Usage: check_hot_path.py <objdump> <hot_path_subject binary>
@@ -22,7 +22,10 @@ Publishing (note 008): a message through the handler and its publisher, and a
 change of the feed's state, held to the memory functions alone (memset
 included: an update is cleared before it is filled); the publisher's tick may
 also call kill, and read errno after it (its once-a-second check that each
-consumer's process runs).
+consumer's process runs). Recording and monitoring (note 009): a feed pass with
+the recorder attached (as the receive path, the socket's calls allowed, and,
+the pass running the publisher's tick, its kill), the recorder's own call, and
+the monitoring refresh: memory functions alone.
 """
 import re
 import subprocess
@@ -33,8 +36,9 @@ SUBJECTS = ["itchfh_apply_ref_hash_levels_sorted", "itchfh_apply_ref_hash_levels
             "itchfh_handle_default", "itchfh_decode_switch", "itchfh_decode_table", "itchfh_decode_simd",
             "itchfh_decode_simd_unpadded", "itchfh_sequence_packet", "itchfh_sequence_tick",
             "itchfh_feed_one_poll", "itchfh_feed_two_receive", "itchfh_feed_two_handle",
-            "itchfh_publish_message", "itchfh_publish_feed", "itchfh_publish_tick"]
-INDIRECT_ALLOWED = {"itchfh_decode_table", "itchfh_feed_one_poll", "itchfh_feed_two_handle"}  # B, and the feed's passes that decode with it
+            "itchfh_publish_message", "itchfh_publish_feed", "itchfh_publish_tick",
+            "itchfh_record_poll", "itchfh_record_datagram", "itchfh_monitor_refresh"]
+INDIRECT_ALLOWED = {"itchfh_decode_table", "itchfh_feed_one_poll", "itchfh_feed_two_handle", "itchfh_record_poll"}  # B, and the feed's passes that decode with it
 # __memcpy_chk, __memmove_chk: with a bounds check (_FORTIFY_SOURCE, Ubuntu's default).
 MEMORY = {"memcpy@plt", "__memcpy_chk@plt", "memmove@plt", "__memmove_chk@plt", "memcmp@plt", "__stack_chk_fail@plt",
           "memset@plt", "__memset_chk@plt"}
@@ -92,7 +96,7 @@ for subject in SUBJECTS:
         bad += [f"{f}: {m}" for m, _ in funcs[f] if m in ("syscall", "sysenter", "int")]
         for t in direct:
             if t.endswith("@plt"):
-                if t not in MEMORY and not (subject.startswith("itchfh_feed") and t in SOCKET) and not (subject == "itchfh_publish_tick" and t in ("kill@plt", "__errno_location@plt")):
+                if t not in MEMORY and not ((subject.startswith("itchfh_feed") or subject == "itchfh_record_poll") and t in SOCKET) and not (subject in ("itchfh_publish_tick", "itchfh_record_poll") and t in ("kill@plt", "__errno_location@plt")):
                     bad.append(f"{f}: calls {t}")
             elif t in funcs and t != f:
                 todo.append(t)
@@ -100,6 +104,7 @@ for subject in SUBJECTS:
     label = ("S5 (note 003)" if subject.startswith("itchfh_handle") else "S3 (note 004)" if subject.startswith("itchfh_decode")
              else "S5 (note 005)" if subject.startswith("itchfh_sequence") else "S5 (note 007)" if subject.startswith("itchfh_feed")
              else "S5 (note 008)" if subject.startswith("itchfh_publish")
+             else "S5 (note 009)" if subject.startswith("itchfh_record") or subject.startswith("itchfh_monitor")
              else "S4")
     check(not bad, f"{label} {subject}: {len(seen)} functions, {size} instructions, calls only memory functions "
                    f"and the stack protector" + (", and the socket's calls" if subject.startswith("itchfh_feed") else "") + (f": found {bad[:5]}" if bad else ""))

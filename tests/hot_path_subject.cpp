@@ -9,12 +9,16 @@
 // nothing. And the receive path (note 007, S5): a pass of each of D4's
 // arrangements, D1's two ways of reading included, through to the handler.
 // And publishing (note 008, S5): a message through the handler and its
-// publisher, a change of the feed's state, and the publisher's tick.
+// publisher, a change of the feed's state, and the publisher's tick. And
+// recording and monitoring (note 009, S5): a feed pass with the recorder, the
+// recorder's own call, and the monitoring refresh.
 #include <itchfh/book.hpp>
 #include <itchfh/decoder.hpp>
 #include <itchfh/feed.hpp>
 #include <itchfh/handler.hpp>
+#include <itchfh/monitoring.hpp>
 #include <itchfh/publisher.hpp>
+#include <itchfh/recording.hpp>
 #include <itchfh/sequencer.hpp>
 
 #define ITCHFH_SUBJECT(R, L)                                                                                    \
@@ -69,5 +73,15 @@ extern "C" [[gnu::noinline]] bool itchfh_feed_two_handle(itchfh::feed_two<defaul
 extern "C" [[gnu::noinline]] void itchfh_publish_message(itchfh::published<>& p, std::uint64_t seq, const itchfh::message& m) { p.on(seq, m); }
 extern "C" [[gnu::noinline]] void itchfh_publish_feed(itchfh::published<>& p, itchfh::feed_state s, std::uint64_t next) { p.feed(s, next); }
 extern "C" [[gnu::noinline]] void itchfh_publish_tick(itchfh::published<>& p, std::int64_t now) { p.tick(now); }
+
+using recorded_feed = itchfh::feed_one<itchfh::published<>, itchfh::no_probe, itchfh::rec::recorder>;
+extern "C" [[gnu::noinline]] void itchfh_record_poll(recorded_feed& f) { f.poll(); }
+extern "C" [[gnu::noinline]] void itchfh_record_datagram(itchfh::rec::recorder& r, const itchfh::udp::datagram& d) { r.record(d, 0); }
+extern "C" [[gnu::noinline]] void itchfh_monitor_refresh(itchfh::mon::block& b, itchfh::mon::values& v, recorded_feed& f,
+                                                         const itchfh::default_book& book, const itchfh::publisher<itchfh::default_book>* p,
+                                                         const itchfh::rec::recorder* r, std::int64_t now) {
+    itchfh::mon::gather(v, f, book, p, r, now);
+    b.write(v);
+}
 
 int main() { return 0; }

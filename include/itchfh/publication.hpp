@@ -85,12 +85,34 @@ struct alignas(64) update {
         // status: the field's value as the handler now holds it (trading
         // state and reason, Reg SHO, halts, LULD collar, IPO quoting, retail
         // interest, DLCR; nothing for a participant position); market (S, V,
-        // W) and directory (R): the decoded message body.
+        // W) and directory (R): the decoded message body. Always the fields
+        // in their order, packed, never a struct's padding (pack below).
         unsigned char raw[40];
     };
 };
 static_assert(sizeof(update) == 64 && std::is_trivially_copyable_v<update>);
 static_assert(sizeof(stock_directory) <= 40 && sizeof(direct_listing) <= 40 && sizeof(luld_collar) <= 40 && sizeof(mwcb_decline) <= 40);
+
+// Writes fields one after another into an update's raw body, no padding, so
+// the same values always give the same bytes.
+struct pack {
+    unsigned char* p;
+    template <class T>
+    pack& operator()(const T& v) {
+        std::memcpy(p, &v, sizeof(v));
+        p += sizeof(v);
+        return *this;
+    }
+};
+inline void pack_directory(unsigned char* raw, const stock_directory& r) {
+    pack{raw}(r.stock)(r.market_category)(r.financial_status)(r.round_lot_size)(r.round_lots_only)(r.issue_classification)(
+        r.issue_sub_type)(r.authenticity)(r.short_sale_threshold)(r.ipo_flag)(r.luld_tier)(r.etp_flag)(r.etp_leverage_factor)(r.inverse_indicator);
+}
+inline void pack_ipo(unsigned char* raw, const ipo_quoting& r) { pack{raw}(r.stock)(r.release_time_s)(r.release_qualifier)(r.ipo_price); }
+inline void pack_luld(unsigned char* raw, const luld_collar& r) { pack{raw}(r.stock)(r.reference_price)(r.upper_price)(r.lower_price)(r.extension); }
+inline void pack_dlcr(unsigned char* raw, const direct_listing& r) {
+    pack{raw}(r.stock)(r.open_eligibility)(r.min_price)(r.max_price)(r.near_price)(r.near_time)(r.lower_collar)(r.upper_collar);
+}
 
 inline constexpr std::size_t ring_capacity = 1u << 16;  // updates (4 MB) a consumer
 inline constexpr std::uint64_t ring_type_id = 0x6974636866687075ULL;  // "itchfhpu"

@@ -92,3 +92,7 @@ The first 50,000,000 messages of the sample day over MoldUDP64 multicast from ou
 
 The sample day's first 50,000,000 messages through the handler and its publisher on one CPU, consumers in processes of their own; ns, range over runs. The method: [RESULTS.md](RESULTS.md).
 <!-- /results -->
+
+<!-- results:record-summary -->
+Recording figures: not yet measured (design note 009).
+<!-- /results -->

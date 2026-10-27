@@ -144,10 +144,10 @@ public:
                 break;
             case status_field::reg_sho: u.raw[0] = static_cast<unsigned char>(st.reg_sho); break;
             case status_field::operational_halt: std::memcpy(u.raw, st.operational_halt.data(), 3); break;
-            case status_field::luld_collar: std::memcpy(u.raw, &st.luld, sizeof(st.luld)); break;
-            case status_field::ipo_quoting: std::memcpy(u.raw, &st.ipo, sizeof(st.ipo)); break;
+            case status_field::luld_collar: pub::pack_luld(u.raw, st.luld); break;
+            case status_field::ipo_quoting: pub::pack_ipo(u.raw, st.ipo); break;
             case status_field::retail_interest: u.raw[0] = static_cast<unsigned char>(st.retail_interest); break;
-            case status_field::direct_listing: std::memcpy(u.raw, &st.dlcr, sizeof(st.dlcr)); break;
+            case status_field::direct_listing: pub::pack_dlcr(u.raw, st.dlcr); break;
             case status_field::participant: break;
         }
         push(u, true);
@@ -172,7 +172,7 @@ public:
     }
     void directory(std::uint16_t l, const stock_directory& r) {
         pub::update u = head(pub::kind::directory, l);
-        std::memcpy(u.raw, &r, sizeof(r));
+        pub::pack_directory(u.raw, r);
         push(u, true);
     }
 
