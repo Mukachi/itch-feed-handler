@@ -1,7 +1,7 @@
 // The receive path's cost (note 007, S6), against feed_sender (its own
 // process; for the card, inside the far port's namespace). The first 50
 // million messages of the sample day (about 1.16 million packets) sent at
-// each pace in turn, nothing dropped by the sender, into each of:
+// each pace in turn (50k to 150k packets a second), nothing dropped by the sender, into each of:
 //   one, recvmmsg   feed_one, D1's batches (D4 a), on CPU 2
 //   one, recvmsg    feed_one, a datagram a call
 //   two             feed_two (D4 b): receiving on CPU 2, handling on CPU 3
@@ -154,7 +154,9 @@ int main(int argc, char** argv) {
         return run.finish(false, "feed_bench");
     }
 
-    const double paces[] = {50'000, 75'000, 100'000, 125'000, 150'000, 200'000, 300'000, 400'000};
+    // Finer where one thread runs out (the check run: no drops at 100k, drops at 125k); nothing above
+    // 150k, where every arrangement is overloaded and the sender is busy answering re-requests.
+    const double paces[] = {50'000, 75'000, 100'000, 110'000, 120'000, 130'000, 150'000};
     const char* arrangements[] = {"one, recvmmsg", "one, recvmsg", "two"};
     std::vector<std::unique_ptr<result>> results;
     int granted = 0;
