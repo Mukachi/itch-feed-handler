@@ -94,5 +94,12 @@ The sample day's first 50,000,000 messages through the handler and its publisher
 <!-- /results -->
 
 <!-- results:record-summary -->
-Recording figures: not yet measured (design note 009).
+| Pace | Recording | Cost a datagram p50 | p99 | Kernel to handled p50 | p99 | p99.9 | Kernel drops |
+|---|---|---|---|---|---|---|---|
+| 50k/s | off | 8,169–8,256 | 11.2 µs–11.3 µs | 2,459–2,515 | 3,039–3,107 | 3,303–3,395 | 0 |
+| 50k/s | on | 9,014–9,057 | 12.7 µs–12.8 µs | 2,887–2,923 | 3,599–3,643 | 3,931–3,999 | 0 |
+| 100k/s | off | 8,169–8,271 | 11.2 µs–11.3 µs | 2,515–2,591 | 39.4 µs–79.6 µs | 383.5 µs–790.5 µs | 0 |
+| 100k/s | on | 8,999–9,057 | 12.6 µs–12.8 µs | 3,471–4,167 | 1,245.2 µs–2,457.6 µs | 3,006.5 µs–4,587.5 µs | 0 |
+
+The receive path with the recorder off and on: one thread over loopback, ns, range over runs. The writer flat out and the method: [RESULTS.md](RESULTS.md).
 <!-- /results -->

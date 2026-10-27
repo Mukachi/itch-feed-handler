@@ -30,3 +30,7 @@ runs = ["feed-dev-lnx01-20261027T004056Z.json", "feed-dev-lnx01-20261027T004554Z
 note = "008"
 runs = ["publish-dev-lnx01-20261027T145206Z.json", "publish-dev-lnx01-20261027T150542Z.json", "publish-dev-lnx01-20261027T150748Z.json",
         "publish-dev-lnx01-20261027T152050Z.json", "publish-dev-lnx01-20261027T152258Z.json", "publish-dev-lnx01-20261027T152502Z.json"]
+
+[record]
+note = "009"
+runs = ["record-dev-lnx01-20261027T215846Z.json", "record-dev-lnx01-20261027T220521Z.json", "record-dev-lnx01-20261027T220652Z.json"]

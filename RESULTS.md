@@ -15,6 +15,7 @@ HP ProLiant DL380 Gen9, BIOS P89 (08/29/2024); 2 × Intel(R) Xeon(R) CPU E5-2699
 | snapshot (note 006) | 3 | 2026-10-26 21:22 UTC | 92bd97d | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | feed (note 007) | 9 | 2026-10-27 00:40 UTC | ee4adfe | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | publish (note 008) | 6 | 2026-10-27 14:52 UTC | 08acac7 | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
+| record (note 009) | 3 | 2026-10-27 21:58 UTC | cc7ea58 | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 
 Every run met note 004's bench-mode conditions (each file's `environment.bench_mode`, checked before use) and was built clean; compiler and flags are in each file's `environment.build`. Ranges are min–max over a set's runs.
 
@@ -379,3 +380,20 @@ The first 50,000,000 messages of the sample day `01302020.NASDAQ_ITCH50.gz`, dec
 | 1 consumer | 3.04–3.15 | 229–231 | 830–841 | 4,245–4,470 | 273–298 | 549–587 | – |
 | 2 consumers | 2.28–2.61 | 293–354 | 941–1,032 | 4,448–4,630 | 281–299 | 594–622 | 337–368 |
 | 4 consumers | 1.67–1.90 | 425–499 | 1,172–1,292 | 4,805–5,031 | 299–372 | 692–800 | 475–532 |
+
+## Recording (note 009)
+
+The recorder on CPU 2 (the receive thread), its writer on housekeeping CPU 1, the recording on the build directory's disk (ext4 on one SAS disk behind a battery-backed controller cache). Writer flat out: 1,400-byte datagrams recorded in a tight loop for 10 s, each record() call timed between start() and stop(), unsubtracted, apart for the calls that recorded and those that found the ring full; written: the bytes on disk over the time; unrecorded: the share of calls that found the ring full once the writer fell behind (the receive side never waits).
+
+| record() p50, recording | p99 | p99.9 | record() p50, ring full | Written MB/s | Unrecorded |
+|---|---|---|---|---|---|
+| 188–209 | 261–302 | 295–376 | 40–44 | 285–287 | 98.6% |
+
+The feed, recording off and on: the first 50,000,000 messages of the sample day from our sender over loopback, one thread reading a datagram a call (note 007's default), behind it the default decoder and the handler; cost a datagram and kernel to handled as note 007 measures them. No datagram was left unrecorded. 3 runs; ranges over them.
+
+| Pace | Recording | Cost a datagram p50 | p99 | Kernel to handled p50 | p99 | p99.9 | Kernel drops |
+|---|---|---|---|---|---|---|---|
+| 50k/s | off | 8,169–8,256 | 11.2 µs–11.3 µs | 2,459–2,515 | 3,039–3,107 | 3,303–3,395 | 0 |
+| 50k/s | on | 9,014–9,057 | 12.7 µs–12.8 µs | 2,887–2,923 | 3,599–3,643 | 3,931–3,999 | 0 |
+| 100k/s | off | 8,169–8,271 | 11.2 µs–11.3 µs | 2,515–2,591 | 39.4 µs–79.6 µs | 383.5 µs–790.5 µs | 0 |
+| 100k/s | on | 8,999–9,057 | 12.6 µs–12.8 µs | 3,471–4,167 | 1,245.2 µs–2,457.6 µs | 3,006.5 µs–4,587.5 µs | 0 |
