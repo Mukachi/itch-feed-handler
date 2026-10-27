@@ -478,11 +478,11 @@ RECORD_HEAD = ["Pace", "Recording", "Cost a datagram p50", "p99", "Kernel to han
 def record_flat_rows(lf, runs):
     fs = [d["record"]["flat_out"] for _, d in runs]
     return [[lf.rng([f[k] for f in fs]) for k in ("p50_ns", "p99_ns", "p999_ns")]
-            + [lf.rng([f["mb_per_s"] for f in fs], lambda v: f"{v:,.0f}"),
+            + [lf.rng([f["refused"]["p50_ns"] for f in fs]), lf.rng([f["mb_per_s"] for f in fs], lambda v: f"{v:,.0f}"),
                lf.rng([100 * f["unrecorded"] / f["calls"] for f in fs], lambda v: f"{v:.1f}%")]]
 
 
-RECORD_FLAT_HEAD = ["record() p50", "p99", "p99.9", "Written MB/s", "Unrecorded"]
+RECORD_FLAT_HEAD = ["record() p50, recording", "p99", "p99.9", "record() p50, ring full", "Written MB/s", "Unrecorded"]
 
 
 def record_section(lf, note, runs):
@@ -492,7 +492,7 @@ def record_section(lf, note, runs):
             f"The recorder on CPU {r0['cpu']} (the receive thread), its writer on housekeeping CPU {r0['writer_cpu']}, the "
             "recording on the build directory's disk (ext4 on one SAS disk behind a battery-backed controller cache). Writer flat out: "
             f"{f0['datagram_bytes']:,}-byte datagrams recorded in a tight loop for {f0['seconds']:.0f} s, each record() call timed "
-            "between start() and stop(), unsubtracted; written: the bytes on disk over the time; unrecorded: the share of calls "
+            "between start() and stop(), unsubtracted, apart for the calls that recorded and those that found the ring full; written: the bytes on disk over the time; unrecorded: the share of calls "
             "that found the ring full once the writer fell behind (the receive side never waits).", "",
             lf.table(RECORD_FLAT_HEAD, record_flat_rows(lf, runs)), "",
             f"The feed, recording off and on: the first {r0['messages']:,} messages of the sample day from our sender over "

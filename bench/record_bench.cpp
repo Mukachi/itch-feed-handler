@@ -2,9 +2,11 @@
 // housekeeping CPU), the recording on the build directory's disk:
 //   writer flat out  1,400-byte datagrams recorded in a tight loop for 10 s:
 //                    record()'s own cost (each call timed between start() and
-//                    stop(), the first 10,000 discarded), the rate written to
-//                    disk, and the share left unrecorded once the writer falls
-//                    behind (the receive side never waits, D2)
+//                    stop(), the first 10,000 discarded), apart for the calls
+//                    that recorded and those that found the ring full (the
+//                    check run's single figure was mostly the second: 98.7% of
+//                    the calls), the rate written to disk, and the share left
+//                    unrecorded once the writer falls behind (D2)
 //   feed, off / on   against feed_sender (as feed_bench): the first 50 million
 //                    messages at 50k and 100k packets a second, one thread
 //                    reading a datagram a call (note 007's default), with the
@@ -132,7 +134,7 @@ int main(int argc, char** argv) {
     bool ok = true;
 
     // The writer flat out.
-    hist flat;
+    hist flat, flat_refused;
     std::uint64_t flat_calls = 0, flat_unrecorded = 0, flat_written = 0, flat_bytes = 0;
     double flat_secs = 0;
     {
@@ -152,10 +154,11 @@ int main(int argc, char** argv) {
         while (std::chrono::steady_clock::now() < until)
             for (int k = 0; k < 1000; ++k) {
                 d.kernel_ns = static_cast<std::int64_t>(flat_calls);
+                const std::uint64_t refused_before = r.unrecorded();
                 const ticks a = start();
                 r.record(d, 0);
                 const ticks b = stop();
-                if (++flat_calls > warmup) flat.record(b - a);
+                if (++flat_calls > warmup) (r.unrecorded() == refused_before ? flat : flat_refused).record(b - a);
             }
         flat_unrecorded = r.unrecorded();
         r.close(0, 0);
@@ -163,9 +166,10 @@ int main(int argc, char** argv) {
         flat_written = r.written();
         flat_bytes = r.bytes_written();
         std::filesystem::remove(path);
-        std::printf("writer flat out: %llu calls, record() p50 %.0f ns p99 %.0f; written %.0f MB/s, %.1f%% unrecorded\n",
+        std::printf("writer flat out: %llu calls, record() recording p50 %.0f ns p99 %.0f (refused p50 %.0f); written %.0f MB/s, %.1f%% unrecorded\n",
                     static_cast<unsigned long long>(flat_calls), flat.percentile(50) ? static_cast<double>(*flat.percentile(50)) / tpn : -1.0,
-                    flat.percentile(99) ? static_cast<double>(*flat.percentile(99)) / tpn : -1.0, static_cast<double>(flat_bytes) / 1e6 / flat_secs,
+                    flat.percentile(99) ? static_cast<double>(*flat.percentile(99)) / tpn : -1.0,
+                    flat_refused.percentile(50) ? static_cast<double>(*flat_refused.percentile(50)) / tpn : -1.0, static_cast<double>(flat_bytes) / 1e6 / flat_secs,
                     100.0 * static_cast<double>(flat_unrecorded) / static_cast<double>(flat_calls));
         std::fflush(stdout);
     }
@@ -265,10 +269,17 @@ int main(int argc, char** argv) {
     run.w.member("written", flat_written);
     run.w.member("unrecorded", flat_unrecorded);
     run.w.member("mb_per_s", static_cast<double>(flat_bytes) / 1e6 / flat_secs);
+    run.w.member("recorded_calls", flat.count());
     run.w.member("p50_ns", tns(flat.percentile(50)));
     run.w.member("p99_ns", tns(flat.percentile(99)));
     run.w.member("p999_ns", tns(flat.percentile(99.9)));
     run.w.member("max_ns", static_cast<double>(flat.max()) / tpn);
+    run.w.key("refused");
+    run.w.begin_object();
+    run.w.member("count", flat_refused.count());
+    run.w.member("p50_ns", tns(flat_refused.percentile(50)));
+    run.w.member("p99_ns", tns(flat_refused.percentile(99)));
+    run.w.end_object();
     run.w.end_object();
     run.w.key("feed");
     run.w.begin_array();
