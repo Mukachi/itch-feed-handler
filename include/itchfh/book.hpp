@@ -111,6 +111,14 @@ public:
         });
         return v;
     }
+    // Every level of a side, best first, to `f` (no allocation: note 008's replay).
+    template <class F>
+    void each_level(std::uint16_t locate, side s, F&& f) const {
+        with(locate, s, [&](const auto& sd) {
+            sd.each(shared_, [&](std::uint32_t l) { f(view(l)); });
+            return 0;
+        });
+    }
     std::vector<std::uint64_t> queue(std::uint16_t locate, side s, std::uint32_t price) const {
         std::vector<std::uint64_t> q;
         const std::uint32_t l = with(locate, s, [&](const auto& sd) { return sd.find(shared_, price); });

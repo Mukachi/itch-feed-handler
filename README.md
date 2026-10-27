@@ -80,3 +80,7 @@ A GLIMPSE 5.0 snapshot at the sample day's peak of live orders: built by the sna
 
 The first 50,000,000 messages of the sample day over MoldUDP64 multicast from our sender, received, sequenced, decoded and handled on the default book, in packets a second (about 43 messages each); ns, range over runs; cost a datagram, for two threads the receiving side's alone. No kernel drops: over about ten seconds, the socket's buffer holding any backlog. Every pace and the method: [RESULTS.md](RESULTS.md).
 <!-- /results -->
+
+<!-- results:publish-summary -->
+Publication figures: not yet measured (design note 008).
+<!-- /results -->

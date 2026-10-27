@@ -73,6 +73,7 @@ public:
             seq_.on_packet(d_[i].bytes, d_[i].length, now);
         }
         seq_.on_tick(now);
+        if constexpr (requires { h_->tick(now); }) h_->tick(now);
     }
     // Until the session has ended (or `stop`).
     void run(const std::atomic<bool>& stop) {
@@ -82,19 +83,24 @@ public:
     const feed_counts& counts() const { return counts_; }
     Probe& probe() { return probe_; }
 
+    // A handler that publishes (note 008) is given each message's sequence
+    // number and the sequencer's changes of state.
     struct output {
         feed_one& f;
-        void deliver(std::uint64_t, const unsigned char* p, std::size_t n) {
+        void deliver(std::uint64_t sequence, const unsigned char* p, std::size_t n) {
             message m;
             if (decode(p, n, m) != decode_status::ok) {
                 ++f.counts_.undecoded;
                 return;
             }
             ++f.counts_.messages;
-            f.h_->on(m);
+            if constexpr (requires { f.h_->on(sequence, m); }) f.h_->on(sequence, m);
+            else f.h_->on(m);
             f.probe_.handled(f.stamp_);
         }
-        void state(feed_state, std::uint64_t) {}
+        void state(feed_state s, std::uint64_t next) {
+            if constexpr (requires { f.h_->feed(s, next); }) f.h_->feed(s, next);
+        }
         void send_request(const unsigned char* p, std::size_t n) { f.rx_.send_request(p, n); }
     };
 

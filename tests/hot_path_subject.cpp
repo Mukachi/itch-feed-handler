@@ -8,10 +8,13 @@
 // through the sequencer and its timer (note 005, S5), with an output that does
 // nothing. And the receive path (note 007, S5): a pass of each of D4's
 // arrangements, D1's two ways of reading included, through to the handler.
+// And publishing (note 008, S5): a message through the handler and its
+// publisher, a change of the feed's state, and the publisher's tick.
 #include <itchfh/book.hpp>
 #include <itchfh/decoder.hpp>
 #include <itchfh/feed.hpp>
 #include <itchfh/handler.hpp>
+#include <itchfh/publisher.hpp>
 #include <itchfh/sequencer.hpp>
 
 #define ITCHFH_SUBJECT(R, L)                                                                                    \
@@ -62,5 +65,9 @@ using default_handler = itchfh::handler<itchfh::default_book, quiet_sink>;
 extern "C" [[gnu::noinline]] void itchfh_feed_one_poll(itchfh::feed_one<default_handler>& f) { f.poll(); }
 extern "C" [[gnu::noinline]] void itchfh_feed_two_receive(itchfh::feed_two<default_handler>& f) { f.receive_pass(); }
 extern "C" [[gnu::noinline]] bool itchfh_feed_two_handle(itchfh::feed_two<default_handler>& f) { return f.handle_one(); }
+
+extern "C" [[gnu::noinline]] void itchfh_publish_message(itchfh::published<>& p, std::uint64_t seq, const itchfh::message& m) { p.on(seq, m); }
+extern "C" [[gnu::noinline]] void itchfh_publish_feed(itchfh::published<>& p, itchfh::feed_state s, std::uint64_t next) { p.feed(s, next); }
+extern "C" [[gnu::noinline]] void itchfh_publish_tick(itchfh::published<>& p, std::int64_t now) { p.tick(now); }
 
 int main() { return 0; }

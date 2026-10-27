@@ -193,6 +193,7 @@ public:
     std::optional<std::uint16_t> locate_of(const symbol& s) const { return directory_.locate_of(s); }
     const instrument_trades& trades_of(std::uint16_t l) const { return trades_.of(l); }
     const instrument_status& status_of(std::uint16_t l) const { return status_.of(l); }
+    const market_status& statuses() const { return status_; }
     const participant_view* participant_of(std::uint16_t l, const mpid& p) const { return status_.participant_of(l, p); }
     const market_state& market() const { return status_.market(); }
     const handler_counts& counts() const { return counts_; }

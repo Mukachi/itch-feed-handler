@@ -54,7 +54,7 @@ target_compile_definitions(lfipc INTERFACE ITCHFH_LFIPC_COMMIT="${ITCHFH_LFIPC_C
 add_dependencies(lfipc build_info)
 
 # Tests: plain executables under CTest. Each one added with its component.
-set(ITCHFH_TESTS reference_book_test book_test reference_decoder_test handler_test decoder_test sequencer_test snapshot_test feed_test)
+set(ITCHFH_TESTS reference_book_test book_test reference_decoder_test handler_test decoder_test sequencer_test snapshot_test feed_test publish_test)
 foreach(t ${ITCHFH_TESTS})
   add_executable(${t} tests/${t}.cpp)
   target_link_libraries(${t} PRIVATE itchfh lfipc Threads::Threads)
@@ -102,6 +102,11 @@ target_link_libraries(feed_day_test PRIVATE itchfh lfipc Threads::Threads)
 target_compile_definitions(feed_day_test PRIVATE ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
 add_test(NAME feed_day_test COMMAND feed_day_test)
 set_tests_properties(feed_day_test PROPERTIES LABELS data TIMEOUT 14400)
+add_executable(publish_day_test tests/publish_day_test.cpp)
+target_link_libraries(publish_day_test PRIVATE itchfh lfipc Threads::Threads)
+target_compile_definitions(publish_day_test PRIVATE ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+add_test(NAME publish_day_test COMMAND publish_day_test)
+set_tests_properties(publish_day_test PROPERTIES LABELS data TIMEOUT 14400)
 
 # The benchmark (note 002, S5): writes into results/ only in bench mode.
 add_executable(book_bench bench/book_bench.cpp)
@@ -128,12 +133,20 @@ add_executable(snapshot_bench bench/snapshot_bench.cpp)
 target_link_libraries(snapshot_bench PRIVATE itchfh lfipc Threads::Threads)
 target_compile_definitions(snapshot_bench PRIVATE LFIPC_RESULTS_DIR="${CMAKE_SOURCE_DIR}/results"
                                                   ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+add_executable(publish_bench bench/publish_bench.cpp)
+target_link_libraries(publish_bench PRIVATE itchfh lfipc Threads::Threads)
+target_compile_definitions(publish_bench PRIVATE LFIPC_RESULTS_DIR="${CMAKE_SOURCE_DIR}/results"
+                                                 ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
 add_executable(feed_bench bench/feed_bench.cpp)
 target_link_libraries(feed_bench PRIVATE itchfh lfipc Threads::Threads)
 target_compile_definitions(feed_bench PRIVATE LFIPC_RESULTS_DIR="${CMAKE_SOURCE_DIR}/results")
 add_executable(feed_sender bench/feed_sender.cpp)
 target_link_libraries(feed_sender PRIVATE itchfh lfipc Threads::Threads)
 target_compile_definitions(feed_sender PRIVATE ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+
+# Note 008's example consumer (D7).
+add_executable(publish_consumer examples/publish_consumer.cpp)
+target_link_libraries(publish_consumer PRIVATE itchfh lfipc)
 
 # The extraction tool of note 002, D7 (not part of the handler).
 add_executable(extract_events tools/extract_events.cpp)
