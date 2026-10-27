@@ -25,3 +25,8 @@ note = "007"
 runs = ["feed-dev-lnx01-20261027T004056Z.json", "feed-dev-lnx01-20261027T004554Z.json", "feed-dev-lnx01-20261027T005053Z.json",
         "feed-dev-lnx01-20261027T011546Z.json", "feed-dev-lnx01-20261027T012737Z.json", "feed-dev-lnx01-20261027T013236Z.json",
         "feed-dev-lnx01-20261027T013732Z.json", "feed-dev-lnx01-20261027T113615Z.json", "feed-dev-lnx01-20261027T114103Z.json"]
+
+[publish]
+note = "008"
+runs = ["publish-dev-lnx01-20261027T145206Z.json", "publish-dev-lnx01-20261027T150542Z.json", "publish-dev-lnx01-20261027T150748Z.json",
+        "publish-dev-lnx01-20261027T152050Z.json", "publish-dev-lnx01-20261027T152258Z.json", "publish-dev-lnx01-20261027T152502Z.json"]

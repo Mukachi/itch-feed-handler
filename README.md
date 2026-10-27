@@ -82,5 +82,13 @@ The first 50,000,000 messages of the sample day over MoldUDP64 multicast from ou
 <!-- /results -->
 
 <!-- results:publish-summary -->
-Publication figures: not yet measured (design note 008).
+| Case | M messages/s | p50 | p99 | p99.9 | Write to read p50, first consumer | p99 | Write to read p50, last consumer |
+|---|---|---|---|---|---|---|---|
+| no publisher | 4.53–5.82 | 132–178 | 519–616 | 762–871 | – | – | – |
+| table only | 3.73–3.75 | 208 | 670–679 | 952–964 | – | – | – |
+| 1 consumer | 3.04–3.15 | 229–231 | 830–841 | 4,245–4,470 | 273–298 | 549–587 | – |
+| 2 consumers | 2.28–2.61 | 293–354 | 941–1,032 | 4,448–4,630 | 281–299 | 594–622 | 337–368 |
+| 4 consumers | 1.67–1.90 | 425–499 | 1,172–1,292 | 4,805–5,031 | 299–372 | 692–800 | 475–532 |
+
+The sample day's first 50,000,000 messages through the handler and its publisher on one CPU, consumers in processes of their own; ns, range over runs. The method: [RESULTS.md](RESULTS.md).
 <!-- /results -->

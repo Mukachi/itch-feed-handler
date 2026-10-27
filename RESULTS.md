@@ -14,6 +14,7 @@ HP ProLiant DL380 Gen9, BIOS P89 (08/29/2024); 2 × Intel(R) Xeon(R) CPU E5-2699
 | sequencer (note 005) | 6 | 2026-10-26 20:01 UTC | 695b3bf | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | snapshot (note 006) | 3 | 2026-10-26 21:22 UTC | 92bd97d | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | feed (note 007) | 9 | 2026-10-27 00:40 UTC | ee4adfe | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
+| publish (note 008) | 6 | 2026-10-27 14:52 UTC | 08acac7 | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 
 Every run met note 004's bench-mode conditions (each file's `environment.bench_mode`, checked before use) and was built clean; compiler and flags are in each file's `environment.build`. Ranges are min–max over a set's runs.
 
@@ -366,3 +367,15 @@ The first 50,000,000 messages of the sample day (about 1.16 million MoldUDP64 pa
 | two | 120k/s | 119.1k/s–120k/s | 0–97,818 | 5,242–5,278 | 7,659–7,718 | 20.9 µs–28.9 µs | 6,692.9 µs–9,125.9 µs | 6,963.2 µs–9,519.1 µs |
 | two | 130k/s | 123.8k/s–128.1k/s | 50,263–136,031 | – | – | – | – | – |
 | two | 150k/s | 138.1k/s–146.2k/s | 67,988–93,068 | – | – | – | – | – |
+
+## Publication (note 008)
+
+The first 50,000,000 messages of the sample day `01302020.NASDAQ_ITCH50.gz`, decoded into memory first, through a fresh default book and handler on one pinned CPU (CPU 2): with a sink that does nothing (no publisher), with the publisher and its state table only, and with 1, 2 and 4 consumers, each a process of its own on CPUs 3, 4, 5, 6 (separate cores, the same node) reading its ring. Each message's handling timed between start() and stop(), unsubtracted, the first 10,000 discarded. The publisher's cost is read from the absolute figures, not as a difference: with no publisher the p50 spread from run to run (mostly 132–138 ns, once 149 and once 178, the same binary and data), while the cases with the publisher stayed within a few ns (208 with the table only in every run), so a difference would carry the baseline's spread (note 008, Review). Write to read: the publishing thread stamps the cycle counter for each message's sequence number before handling it; a consumer subtracts it on reading the update (so it includes the handling), paced at 1 million messages a second over 2,000,000 messages; consumers are pushed to in order, so the first and the last are shown. No consumer was overrun. 6 runs; ranges over them.
+
+| Case | M messages/s | p50 | p99 | p99.9 | Write to read p50, first consumer | p99 | Write to read p50, last consumer |
+|---|---|---|---|---|---|---|---|
+| no publisher | 4.53–5.82 | 132–178 | 519–616 | 762–871 | – | – | – |
+| table only | 3.73–3.75 | 208 | 670–679 | 952–964 | – | – | – |
+| 1 consumer | 3.04–3.15 | 229–231 | 830–841 | 4,245–4,470 | 273–298 | 549–587 | – |
+| 2 consumers | 2.28–2.61 | 293–354 | 941–1,032 | 4,448–4,630 | 281–299 | 594–622 | 337–368 |
+| 4 consumers | 1.67–1.90 | 425–499 | 1,172–1,292 | 4,805–5,031 | 299–372 | 692–800 | 475–532 |

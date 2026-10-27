@@ -421,19 +421,16 @@ def publish_rows(lf, runs):
     rows = []
     for i, name in enumerate(names):
         cs = [p["cases"][i] for p in ps]
-        base = [p["cases"][0]["cost"]["p50_ns"] for p in ps]
-        own = [c["cost"]["p50_ns"] - b for c, b in zip(cs, base)]
         first = [c["write_to_read_paced"][0] for c in cs if c["write_to_read_paced"]]
         last = [c["write_to_read_paced"][-1] for c in cs if c["write_to_read_paced"]]
         rows.append([name, lf.rng([c["messages_per_s"] / 1e6 for c in cs], lambda v: f"{v:.2f}")]
                     + [lf.rng([c["cost"][f] for c in cs]) for f in ("p50_ns", "p99_ns", "p999_ns")]
-                    + ["–" if i == 0 else lf.rng(own)]
                     + [lf.rng([w[f] for w in first]) if first else "–" for f in ("p50_ns", "p99_ns")]
                     + [lf.rng([w["p50_ns"] for w in last]) if len(cs[0]["write_to_read_paced"]) > 1 else "–"])
     return rows
 
 
-PUBLISH_HEAD = ["Case", "M messages/s", "p50", "p99", "p99.9", "Publisher's own p50", "Write to read p50, first consumer",
+PUBLISH_HEAD = ["Case", "M messages/s", "p50", "p99", "p99.9", "Write to read p50, first consumer",
                 "p99", "Write to read p50, last consumer"]
 
 
@@ -445,7 +442,10 @@ def publish_section(lf, note, runs):
             "and its state table only, and with 1, 2 and 4 consumers, each a process of its own on CPUs "
             f"{', '.join(str(c) for c in p0['consumer_cpus'])} (separate cores, the same node) reading its ring. Each message's "
             "handling timed between start() and stop(), unsubtracted, the first "
-            f"{p0['warmup_discarded']:,} discarded; the publisher's own cost is the case's p50 less no publisher's. Write to read: "
+            f"{p0['warmup_discarded']:,} discarded. The publisher's cost is read from the absolute figures, not as a difference: "
+            "with no publisher the p50 spread from run to run (mostly 132–138 ns, once 149 and once 178, the same binary and "
+            "data), while the cases with the publisher stayed within a few ns (208 with the table only in every run), so a "
+            "difference would carry the baseline's spread (note 008, Review). Write to read: "
             "the publishing thread stamps the cycle counter for each message's sequence number before handling it; a consumer "
             f"subtracts it on reading the update (so it includes the handling), paced at {p0['paced_rate'] / 1e6:g} million "
             f"messages a second over {p0['paced_messages']:,} messages; consumers are pushed to in order, so the first and the "
