@@ -248,15 +248,20 @@ void live_and_replayed() {
     std::thread st([&] { s.run(stop); });
     feed_one<published<>, no_probe, rec::recorder> f(rx, *p, small_seq());
     f.set_recorder(r);
+    // The consumer reads on a thread of its own, as a live one would: one pass of the feed can deliver a
+    // recovered backlog larger than its ring (seen under TSan in CI, the consumer read between passes).
+    std::atomic<bool> fed{false};
+    std::thread live_reader([&] {
+        while (!fed.load(std::memory_order_acquire)) live.drain();
+        live.drain();
+    });
     const std::int64_t give_up = monotonic_ns() + 60'000'000'000;
     mon::values v{};
-    while (f.seq().state() != feed_state::ended && f.seq().state() != feed_state::lost && monotonic_ns() < give_up) {
-        f.poll();
-        live.drain();
-    }
+    while (f.seq().state() != feed_state::ended && f.seq().state() != feed_state::lost && monotonic_ns() < give_up) f.poll();
     stop = true;
     st.join();
-    live.drain();
+    fed.store(true, std::memory_order_release);
+    live_reader.join();
     r.close(f.counts().kernel_drops, f.counts().answer_drops);
     mon::gather(v, f, *bk, &p->pub, &r, monotonic_ns());
     mb.write(v);
@@ -283,7 +288,7 @@ void live_and_replayed() {
     replayed.store(true, std::memory_order_release);
     reader_thread.join();
     const std::uint64_t d1 = pub::digest_of(*bk), d2 = pub::digest_of(*bk2);
-    check(f.counts().messages == all.size() && s.counts().dropped > 0 && rr.complete && rr.messages == all.size() && d1 == d2 &&
+    check(!live.c.overrun() && !again.c.overrun() && f.counts().messages == all.size() && s.counts().dropped > 0 && rr.complete && rr.messages == all.size() && d1 == d2 &&
               live.b.digest() == d1 && again.b.digest() == d2 && live.h == again.h && live.feed_updates == again.feed_updates &&
               counters,
           "S1 in small: " + std::to_string(all.size()) + " messages over loopback multicast, " + std::to_string(s.counts().dropped) +
