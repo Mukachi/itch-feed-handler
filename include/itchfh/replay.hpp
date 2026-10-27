@@ -1,6 +1,6 @@
 // Replay of a recording (note 009, D5; note 007's D5): its datagrams into the
 // sequencer in the order they were read, each record's kernel stamp as the
-// sequencer's clock (so its timers run as they did live), then the default
+// sequencer's clock (its re-requests never given up: see below), then the default
 // decoder and the handler as feed_one gives them (a publishing handler gets
 // sequence numbers and the sequencer's changes of state). At full speed, or
 // at the recorded pace. Complete (D4): a trailer, nothing left unrecorded,
@@ -15,6 +15,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <limits>
 
 namespace itchfh {
 
@@ -49,7 +50,14 @@ replay_result replay(rec::reader& rd, Handler& h, const sequencer_config& c = {}
     };
     replay_result r;
     output out{h, r};
-    sequencer<output> seq(out, c);
+    // Never give up on a re-request: nobody is asked, and an answer that came is later in the
+    // file. With the live retries the replay could be lost where the live run was not (the
+    // records' kernel stamps are not the times the live sequencer saw; found in CI under TSan),
+    // so a replay depends on what was recorded, not on its timing. A gap still open at the end
+    // makes the recording incomplete.
+    sequencer_config rc = c;
+    rc.retries = std::numeric_limits<int>::max();
+    sequencer<output> seq(out, rc);
     rec::reader::record x;
     std::int64_t first_stamp = 0, start = 0;
     for (;;) {
