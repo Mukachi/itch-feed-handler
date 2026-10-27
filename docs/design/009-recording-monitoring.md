@@ -1,6 +1,6 @@
 # 009 — Recording and monitoring
 
-**Status:** Draft · **Updated:** 2026-10-27
+**Status:** Agreed · **Updated:** 2026-10-27
 
 ## Proposal
 
@@ -110,3 +110,4 @@ flowchart LR
 | Date | Stage | Finding |
 |---|---|---|
 | 2026-10-27 | Draft | Written for review. On this machine today: `/` is ext4 on `sda`, the P440ar's logical volume (one SAS disk, its cache battery-backed: the gateway's note 004), 827 GB free; `vm.dirty_expire_centisecs` 3000 (30 s), `dirty_background_ratio` 10, `dirty_ratio` 20. The sample day's datagrams are 12.5 GB (note 007's recordings: 9.39 million), at 0.22 MB a second on average and about 22 MB a second in its busiest second (16,102 packets) |
+| 2026-10-27 | Agreed | Approved by Shep, every decision as proposed (option A each), the program of D7 included: D1 datagrams as read, both sockets, with kernel stamps; D2 a ring to a writer thread, the receive thread never waiting; D3 4 MB writes with `sync_file_range`, `fdatasync` at the end; D4 header and trailer, complete only if nothing unrecorded and the replay leaves no gap; D5 replay into the sequencer onwards; D6 a seqlocked monitoring block every 100 ms and `itchfh-monitor`; D7 one validated `key = value` file and the program `itchfh`; D8 the recorder's cost, kernel to handled with recording on and off, the writer's rate |
