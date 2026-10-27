@@ -196,6 +196,9 @@ sequencer_config small_seq() {
     c.hold_bytes = 16u << 20;
     c.prefault = false;
     c.huge_pages = false;
+    // Re-requests given 20 ms, not the default 1 ms: under a sanitizer on CI's shared runners an answer
+    // can take longer than five 1 ms retries (the live feed then lost, the test failed; seen in CI).
+    c.retry_ns = 20'000'000;
     return c;
 }
 
