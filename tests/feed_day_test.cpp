@@ -11,7 +11,12 @@
 // first run's datagrams recorded as received, from both sockets, replayed
 // into a fresh sequencer: the same book.
 //
-// Usage: feed_day_test [day.gz] [packets a second, default 100000]
+// Over the card (S1, D9): with `card <our ip> <sender ip>`, the sender is
+// feed_sender, already serving in the far port's namespace (group 239.192.0.1
+// port 26400, requests 26401, control 26402), each run started and stopped
+// over its control port, as feed_bench does; everything else as above.
+//
+// Usage: feed_day_test [day.gz] [packets a second, default 100000] [card <our ip> <sender ip>]
 #include "check.hpp"
 
 #include <itchfh/book.hpp>
@@ -22,10 +27,13 @@
 #include <itchfh/session_store.hpp>
 #include <itchfh/udp.hpp>
 
+#include <lfipc/bench/cross_cpu.hpp>
+
 #include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <memory>
 #include <string>
 #include <thread>
@@ -98,7 +106,7 @@ struct deliver_to_handler {
 
 struct result {
     std::string books;
-    std::uint64_t messages = 0, undecoded = 0, kernel_drops = 0, requests = 0, held = 0;
+    std::uint64_t messages = 0, undecoded = 0, kernel_drops = 0, requests = 0, held = 0, hold_full = 0, retried = 0, gaps = 0;
     sender_counts sent;
     feed_state state = feed_state::waiting;
     double secs = 0;
@@ -106,29 +114,68 @@ struct result {
 
 const mold::session_id session = {'0', '0', '0', '0', '0', '0', '0', '0', '0', '1'};
 
+// Where the sender is: a thread here (loopback), or feed_sender over the card.
+struct sender_path {
+    bool card = false;
+    std::string our_ip = "127.0.0.1", sender_ip;
+};
+
+// feed_sender's control port (bench/feed_sender.cpp): R starts a run, S stops it with its counts.
+struct control {
+    int fd = -1;
+    sockaddr_in to{};
+    bool open(const std::string& ip) {
+        fd = ::socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+        timeval tv{5, 0};
+        ::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+        return fd >= 0 && udp::address(ip, 26402, to);
+    }
+    void run(const mold::session_id& s, double pace, double drop) {
+        unsigned char b[35];
+        const std::uint64_t last = 0;
+        b[0] = 'R';
+        std::memcpy(b + 1, s.data(), 10);
+        std::memcpy(b + 11, &pace, 8);
+        std::memcpy(b + 19, &drop, 8);
+        std::memcpy(b + 27, &last, 8);
+        ::sendto(fd, b, sizeof(b), 0, reinterpret_cast<const sockaddr*>(&to), sizeof(to));
+    }
+    bool stop(sender_counts& c) {
+        const unsigned char st = 'S';
+        ::sendto(fd, &st, 1, 0, reinterpret_cast<const sockaddr*>(&to), sizeof(to));
+        return ::recv(fd, &c, sizeof(c), 0) == static_cast<ssize_t>(sizeof(c));
+    }
+};
+
 // One run over the socket. arrangement: 0 feed_one, 1 feed_two, 2 the
 // recording loop (feed_one's work, with every datagram kept).
 result run(const session_store& store, const default_book& direct, double pace, double drop, int arrangement, std::uint16_t port,
-           recording* rec) {
+           recording* rec, const sender_path& where, control* ctl, char run_id) {
     result r;
     const auto t0 = std::chrono::steady_clock::now();
     std::string why;
     udp::receiver rx;
     udp::receiver::options ro;
-    ro.port = port;
+    ro.port = where.card ? 26400 : port;
+    ro.interface_ip = where.our_ip;
     udp::sender tx;
-    if (!rx.open(ro, why) || !tx.open(ro.group, port, "127.0.0.1", static_cast<std::uint16_t>(port + 1), why)) {
+    if (!rx.open(ro, why) || (!where.card && !tx.open(ro.group, port, "127.0.0.1", static_cast<std::uint16_t>(port + 1), why))) {
         r.books = why;
         return r;
     }
-    rx.set_server("127.0.0.1", static_cast<std::uint16_t>(port + 1));
+    rx.set_server(where.card ? where.sender_ip : "127.0.0.1", where.card ? 26401 : static_cast<std::uint16_t>(port + 1));
     sender_config sc;
     sc.packets_per_s = pace;
     sc.drop = drop;
     client c;  // built (its tables faulted in, seconds) before anything is sent
     mold_sender s(store, tx, sc);
     std::atomic<bool> stop{false};
-    std::thread st([&] { s.run(stop); });
+    std::thread st;
+    if (where.card) ctl->run({'C', 'A', 'R', 'D', ' ', ' ', ' ', ' ', ' ', run_id}, pace, drop);
+    else st = std::thread([&] {
+        lfipc::bench::detail::pin_to(4);
+        s.run(stop);
+    });
     sequencer_config qc;
     qc.prefault = false;
     // Generous: the day at this pace, twice over.
@@ -140,6 +187,9 @@ result run(const session_store& store, const default_book& direct, double pace, 
         r.undecoded = f.counts().undecoded;
         r.kernel_drops = f.counts().kernel_drops;
         r.requests = f.seq().counts().requests;
+        r.hold_full = f.seq().counts().hold_full;
+        r.retried = f.seq().counts().retried;
+        r.gaps = f.seq().counts().gaps;
         r.held = f.seq().held_packets();
         r.state = f.seq().state();
     } else if (arrangement == 1) {
@@ -149,12 +199,15 @@ result run(const session_store& store, const default_book& direct, double pace, 
             while (!done && monotonic_ns() < give_up) std::this_thread::sleep_for(std::chrono::milliseconds(10));
             giving_up = true;
         });
-        f.run(giving_up, [] {});
+        f.run(giving_up, [] { lfipc::bench::detail::pin_to(3); });
         done = true;
         guard.join();
         r.messages = f.counts().messages;
         r.kernel_drops = f.counts().kernel_drops;
         r.requests = f.seq().counts().requests;
+        r.hold_full = f.seq().counts().hold_full;
+        r.retried = f.seq().counts().retried;
+        r.gaps = f.seq().counts().gaps;
         r.held = f.seq().held_packets();
         r.state = f.seq().state();
     } else {
@@ -179,13 +232,20 @@ result run(const session_store& store, const default_book& direct, double pace, 
         r.messages = out.messages;
         r.undecoded = out.undecoded;
         r.requests = seq.counts().requests;
+        r.hold_full = seq.counts().hold_full;
+        r.retried = seq.counts().retried;
+        r.gaps = seq.counts().gaps;
         r.held = seq.held_packets();
         r.state = seq.state();
     }
-    stop = true;
-    st.join();
-    r.sent = s.counts();
-    r.books = books_differ(direct, *c.book);
+    if (where.card) {
+        if (!ctl->stop(r.sent)) r.books = "feed_sender did not report its counts";
+    } else {
+        stop = true;
+        st.join();
+        r.sent = s.counts();
+    }
+    if (r.books.empty()) r.books = books_differ(direct, *c.book);
     r.secs = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
     return r;
 }
@@ -195,6 +255,23 @@ result run(const session_store& store, const default_book& direct, double pace, 
 int main(int argc, char** argv) {
     const std::string path = argc > 1 ? argv[1] : ITCHFH_DATA_DIR "/01302020.NASDAQ_ITCH50.gz";
     const double pace = argc > 2 ? std::atof(argv[2]) : 100'000;
+    // Placed as feed_bench places them: receiving on CPU 2, handling (two threads) on 3, our sender on 4.
+    if (!lfipc::bench::detail::pin_to(2)) {
+        check(false, "cannot pin to CPU 2");
+        return itchfh::test::result();
+    }
+    sender_path where;
+    control ctl;
+    if (argc > 5 && std::string(argv[3]) == "card") {
+        where.card = true;
+        where.our_ip = argv[4];
+        where.sender_ip = argv[5];
+        sender_counts probe;
+        if (!ctl.open(where.sender_ip) || !ctl.stop(probe)) {
+            check(false, "feed_sender does not answer on " + where.sender_ip + ":26402");
+            return itchfh::test::result();
+        }
+    }
     auto store = std::make_unique<session_store>(session, 450'000'000, std::size_t{14} << 30, false);
     {
         std::FILE* in = ::popen(("gzip -dc '" + path + "'").c_str(), "r");
@@ -226,16 +303,18 @@ int main(int argc, char** argv) {
         double drop;
     } cases[] = {{"one thread (recorded)", 2, 0.001}, {"one thread", 0, 0.01}, {"two threads", 1, 0.01}};
     std::uint16_t port = 26500;
+    char run_id = 'A';
     for (const case_& k : cases) {
-        const result r = run(*store, *direct.book, pace, k.drop, k.arrangement, port, k.arrangement == 2 ? &rec : nullptr);
+        const result r = run(*store, *direct.book, pace, k.drop, k.arrangement, port, k.arrangement == 2 ? &rec : nullptr, where, &ctl, run_id++);
         port = static_cast<std::uint16_t>(port + 2);
         check(r.books.empty() && r.state == feed_state::ended && r.held == 0 && r.messages == store->count() && r.undecoded == 0,
-              std::string("S1, S2, the day over loopback multicast, ") + k.name + ", " + std::to_string(static_cast<int>(pace)) +
+              std::string("S1, S2, the day over ") + (where.card ? "the card" : "loopback") + " multicast, " + k.name + ", " + std::to_string(static_cast<int>(pace)) +
                   " packets a second, " + std::to_string(k.drop * 100).substr(0, 4) + "% dropped by the sender: " + std::to_string(r.messages) +
                   " messages handled once; ended, nothing held; the book equal to the one fed directly" +
                   (r.books.empty() ? "" : " (" + r.books + ")") + "; " + std::to_string(r.sent.packets) + " packets, " +
                   std::to_string(r.sent.dropped) + " dropped by the sender, " + std::to_string(r.kernel_drops) + " by the kernel, " +
-                  std::to_string(r.requests) + " re-requests, " + std::to_string(r.sent.behind) + " sent late; state " +
+                  std::to_string(r.requests) + " re-requests (" + std::to_string(r.retried) + " retried, " + std::to_string(r.gaps) +
+                  " gaps, " + std::to_string(r.hold_full) + " refused by a full hold), " + std::to_string(r.sent.behind) + " sent late; state " +
                   std::to_string(static_cast<int>(r.state)) + " (" + std::to_string(static_cast<int>(r.secs)) + " s)");
     }
     // S4: the recording replayed into a fresh sequencer, as if from the socket.

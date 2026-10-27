@@ -1,7 +1,8 @@
 // The feed's way in (note 007), in D4's two arrangements, from the receiver's
 // socket through the sequencer (note 005), the default decoder (note 004) and
 // a handler (note 003):
-//   feed_one  one thread does it all: receive a batch (or one datagram, D1),
+//   feed_one  one thread does it all (the default arrangement): receive a
+//             datagram (or a batch, D1),
 //             sequence each packet, decode and handle each message
 //   feed_two  a receiving thread (socket and sequencer) hands each message to
 //             a handling thread through lockfree-ipc's SPSC ring; if the ring
@@ -53,7 +54,9 @@ void take_answers(udp::receiver& rx, Seq& seq, udp::datagram* d, feed_counts& c,
 template <class Handler, class Probe = no_probe>
 class feed_one {
 public:
-    feed_one(udp::receiver& rx, Handler& h, const sequencer_config& c = {}, bool batch = true, Probe p = {})
+    // batch: recvmmsg; the default is a datagram a call (recvmsg), the quicker at
+    // every pace the sample day reaches (note 007, D1 and D4 chosen from the figures).
+    feed_one(udp::receiver& rx, Handler& h, const sequencer_config& c = {}, bool batch = false, Probe p = {})
         : rx_(rx), h_(&h), out_{*this}, seq_(out_, c), batch_(batch), d_(std::make_unique<udp::datagram[]>(udp::receiver::max_batch)), probe_(p) {}
 
     // One pass: whatever datagrams are waiting, then the sequencer's timers.
