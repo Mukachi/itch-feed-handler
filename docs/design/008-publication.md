@@ -1,6 +1,6 @@
 # 008 — Publication
 
-**Status:** Draft · **Updated:** 2026-10-27
+**Status:** Agreed · **Updated:** 2026-10-27
 
 ## Proposal
 
@@ -109,3 +109,4 @@ flowchart LR
 | Date | Stage | Finding |
 |---|---|---|
 | 2026-10-27 | Draft | Written for review. Checked in `lockfree-ipc` today: `shm_spsc` puts one SPSC ring in one named segment (layout and type checks, stale recovery, liveness, its note 008); its rings and its MPMC queue each hand an item to one reader, so a ring read by many (D3's alternative b) does not exist there. The handler's sink calls (note 003) are the publisher's inputs as they stand |
+| 2026-10-27 | Agreed | Approved by Shep, every decision as proposed (option A each): D1 on the handler's thread as its sink; D2 one 64-byte update; D3 a ring per consumer in its own segment, overrun and rejoin, the publisher never waiting; D4 a reliability byte on every update, current only when the feed is live and the instrument sound, catching up after a gap, feed-state changes published; D5 reset and replay after a snapshot or a rejoin; D6 a seqlocked state table per instrument; D7 a consumer header and an example consumer; D8 the publisher's cost by number of consumers and the write-to-read time across processes |
