@@ -381,7 +381,7 @@ def feed_summary_rows(lf, paths):
 
 
 FEED_SUMMARY_HEAD = ["Path", "Arrangement", "Keeps up (p99 < 100 µs)", "No kernel drops", "Cost p50 at 100k/s",
-                     "Kernel to handled p50", "p99"]
+                     "Kernel to handled p50 at 100k/s", "p99"]
 
 
 def feed_section(lf, note, runs):

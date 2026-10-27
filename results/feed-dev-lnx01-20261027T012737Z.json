@@ -1,0 +1,1787 @@
+{
+  "environment": {
+    "published": true,
+    "ok": true,
+    "bench_mode": {
+      "ok": true,
+      "failed": []
+    },
+    "machine": {
+      "vendor": "HP",
+      "product": "ProLiant DL380 Gen9",
+      "bios": "P89",
+      "bios_date": "08/29/2024"
+    },
+    "cpu": {
+      "model": "Intel(R) Xeon(R) CPU E5-2699 v4 @ 2.20GHz",
+      "microcode": "0xb000041",
+      "sockets": 2,
+      "cores_per_socket": 22,
+      "threads_per_core": 2,
+      "online": "0-87"
+    },
+    "numa": [
+      {
+        "node": 0,
+        "cpus": "0-21,44-65",
+        "memory_mb": 96251
+      },
+      {
+        "node": 1,
+        "cpus": "22-43,66-87",
+        "memory_mb": 92650
+      }
+    ],
+    "kernel": {
+      "release": "7.0.0-38-generic",
+      "version": "#38-Ubuntu SMP PREEMPT_DYNAMIC Fri Sep  4 09:10:14 UTC 2026",
+      "cmdline": "BOOT_IMAGE=/boot/vmlinuz-7.0.0-38-generic root=UUID=81afe94c-4ca4-4d8a-b704-86099a14f84a ro nohz_full=2-21,46-65 rcu_nocbs=2-21,46-65 isolcpus=managed_irq,domain,2-21,46-65 crashkernel=2G-4G:320M,4G-32G:512M,32G-64G:1024M,64G-128G:2048M,128G-:4096M",
+      "thp": "madvise",
+      "numa_balancing": "0",
+      "perf_event_paranoid": "2",
+      "vulnerabilities": {
+        "gather_data_sampling": "Not affected",
+        "ghostwrite": "Not affected",
+        "indirect_target_selection": "Not affected",
+        "itlb_multihit": "KVM: Mitigation: Split huge pages",
+        "l1tf": "Mitigation: PTE Inversion; VMX: conditional cache flushes, SMT vulnerable",
+        "mds": "Mitigation: Clear CPU buffers; SMT vulnerable",
+        "meltdown": "Mitigation: PTI",
+        "mmio_stale_data": "Mitigation: Clear CPU buffers; SMT vulnerable",
+        "old_microcode": "Not affected",
+        "reg_file_data_sampling": "Not affected",
+        "retbleed": "Not affected",
+        "spec_rstack_overflow": "Not affected",
+        "spec_store_bypass": "Mitigation: Speculative Store Bypass disabled via prctl",
+        "spectre_v1": "Mitigation: usercopy/swapgs barriers and __user pointer sanitization",
+        "spectre_v2": "Mitigation: Retpolines; IBPB: conditional; IBRS_FW; STIBP: conditional; RSB filling; PBRSB-eIBRS: Not affected; BHI: Not affected",
+        "srbds": "Not affected",
+        "tsa": "Not affected",
+        "tsx_async_abort": "Mitigation: Clear CPU buffers; SMT vulnerable",
+        "vmscape": "Mitigation: IBPB before exit to userspace"
+      }
+    },
+    "power": {
+      "governor": "performance",
+      "turbo": true,
+      "idle_states_enabled": ["C1", "C1E", "C3", "C6", "POLL"],
+      "uncore_khz": [
+        {
+          "socket": 0,
+          "min": 2800000,
+          "max": 2800000
+        },
+        {
+          "socket": 1,
+          "min": 2800000,
+          "max": 2800000
+        }
+      ]
+    },
+    "placement": {
+      "fence": "0-1,22-45,66-87",
+      "reserved": "2-21,46-65",
+      "cgroup": "/bench.slice/run-p126054-i25892.scope",
+      "affinity": "0-87",
+      "memory_policy": "bind 0"
+    },
+    "build": {
+      "commit": "ee4adfe02d7f282e2a9d36348747352dbe22722e",
+      "clean": true,
+      "compiler": "gcc 15.2.0",
+      "build_type": "Release",
+      "flags": " -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror -march=x86-64-v3"
+    },
+    "run": {
+      "program": "feed_bench",
+      "args": [],
+      "start_utc": "2026-10-27T01:27:37Z"
+    }
+  },
+  "noise": {
+    "threshold_ns": 999.8038848363607,
+    "seconds_per_cpu": 2.00000000497831,
+    "cpus": [
+      {
+        "cpu": 2,
+        "ok": true,
+        "stopped_fraction": 2.626385137092965e-05,
+        "stops": 2,
+        "stops_per_s": 0.9999999975108449,
+        "by_class": {
+          "1-10us": 1,
+          "10-100us": 1,
+          "100us-1ms": 0,
+          "over_1ms": 0
+        },
+        "longest_ns": 46990.32751043829,
+        "iterations": 271675142,
+        "iteration_min_ns": 5.460922447900012,
+        "overflow": false,
+        "interrupts": {
+          "LOC": 3
+        },
+        "softirqs": {},
+        "involuntary_switches": 1,
+        "stop_lengths": {
+          "sub_bucket_bits": 10,
+          "max_bits": 40,
+          "count": 2,
+          "overflow": 0,
+          "min_ns": 5537.375362170613,
+          "max_ns": 46990.32751043829,
+          "percentiles_ns": {
+            "p50": null,
+            "p90": null,
+            "p99": null,
+            "p999": null,
+            "p9999": null,
+            "p99999": null
+          },
+          "buckets": [
+            [12175, 1],
+            [103295, 1]
+          ]
+        }
+      },
+      {
+        "cpu": 3,
+        "ok": true,
+        "stopped_fraction": 0,
+        "stops": 0,
+        "stops_per_s": 0,
+        "by_class": {
+          "1-10us": 0,
+          "10-100us": 0,
+          "100us-1ms": 0,
+          "over_1ms": 0
+        },
+        "longest_ns": 0,
+        "iterations": 271682355,
+        "iteration_min_ns": 5.460922447900012,
+        "overflow": false,
+        "interrupts": {},
+        "softirqs": {},
+        "involuntary_switches": 0,
+        "stop_lengths": {
+          "sub_bucket_bits": 10,
+          "max_bits": 40,
+          "count": 0,
+          "overflow": 0,
+          "min_ns": 0,
+          "max_ns": 0,
+          "percentiles_ns": {
+            "p50": null,
+            "p90": null,
+            "p99": null,
+            "p999": null,
+            "p9999": null,
+            "p99999": null
+          },
+          "buckets": []
+        }
+      }
+    ]
+  },
+  "clock": {
+    "ok": true,
+    "source": "rdtsc",
+    "invariant_tsc": true,
+    "kernel_clocksource": "tsc",
+    "ticks_per_ns": 2.1974309495302533,
+    "calibration_spread_ppm": 0.027297630913276093,
+    "overhead": {
+      "cpu": 2,
+      "samples": 1000000,
+      "warmup_discarded": 100000,
+      "p50_ns": 16.38276734370004,
+      "p99_ns": 17.292921085016708,
+      "p999_ns": 17.292921085016708,
+      "max_ns": 17.292921085016708
+    },
+    "cross_cpu": [
+      {
+        "a": 0,
+        "b": 1,
+        "theta_lo_ns": -84.6442979424502,
+        "theta_hi_ns": 96.47629657956689,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 2,
+        "theta_lo_ns": -108.30829521668359,
+        "theta_hi_ns": 92.83568161430021,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 3,
+        "theta_lo_ns": -76.45291427060017,
+        "theta_hi_ns": 76.45291427060017,
+        "gain_hi_ticks": -8,
+        "gain_lo_ticks": -6,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 4,
+        "theta_lo_ns": -108.30829521668359,
+        "theta_hi_ns": 105.57783399273357,
+        "gain_hi_ticks": -2,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 5,
+        "theta_lo_ns": -74.63260678796684,
+        "theta_hi_ns": 66.44122311611682,
+        "gain_hi_ticks": -14,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 6,
+        "theta_lo_ns": -87.3747591664002,
+        "theta_hi_ns": 103.75752651010023,
+        "gain_hi_ticks": -12,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 7,
+        "theta_lo_ns": -108.30829521668359,
+        "theta_hi_ns": 91.92552787298355,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 8,
+        "theta_lo_ns": -74.63260678796684,
+        "theta_hi_ns": 68.26153059875016,
+        "gain_hi_ticks": -14,
+        "gain_lo_ticks": -10,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 9,
+        "theta_lo_ns": -81.00368297718352,
+        "theta_hi_ns": 97.38645032088355,
+        "gain_hi_ticks": -16,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 10,
+        "theta_lo_ns": -98.29660406220023,
+        "theta_hi_ns": 85.55445168376687,
+        "gain_hi_ticks": -16,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 11,
+        "theta_lo_ns": -85.55445168376687,
+        "theta_hi_ns": 79.18337549455018,
+        "gain_hi_ticks": -18,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 12,
+        "theta_lo_ns": -81.00368297718352,
+        "theta_hi_ns": 101.02706528615023,
+        "gain_hi_ticks": -4,
+        "gain_lo_ticks": -2,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 13,
+        "theta_lo_ns": -85.55445168376687,
+        "theta_hi_ns": 74.63260678796684,
+        "gain_hi_ticks": -20,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 14,
+        "theta_lo_ns": -89.19506664903354,
+        "theta_hi_ns": 77.36306801191685,
+        "gain_hi_ticks": -22,
+        "gain_lo_ticks": -2,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 15,
+        "theta_lo_ns": -91.01537413166687,
+        "theta_hi_ns": 80.09352923586685,
+        "gain_hi_ticks": -20,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 16,
+        "theta_lo_ns": -85.55445168376687,
+        "theta_hi_ns": 78.27322175323351,
+        "gain_hi_ticks": -14,
+        "gain_lo_ticks": -8,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 17,
+        "theta_lo_ns": -87.3747591664002,
+        "theta_hi_ns": 73.72245304665017,
+        "gain_hi_ticks": -18,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 18,
+        "theta_lo_ns": -99.2067578035169,
+        "theta_hi_ns": 74.63260678796684,
+        "gain_hi_ticks": -16,
+        "gain_lo_ticks": -8,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 19,
+        "theta_lo_ns": -96.47629657956689,
+        "theta_hi_ns": 77.36306801191685,
+        "gain_hi_ticks": -16,
+        "gain_lo_ticks": -8,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 20,
+        "theta_lo_ns": -92.83568161430021,
+        "theta_hi_ns": 64.62091563348348,
+        "gain_hi_ticks": -50,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 21,
+        "theta_lo_ns": -92.83568161430021,
+        "theta_hi_ns": 79.18337549455018,
+        "gain_hi_ticks": -14,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 22,
+        "theta_lo_ns": -185.67136322860043,
+        "theta_hi_ns": 188.40182445255044,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 23,
+        "theta_lo_ns": -193.40767002979211,
+        "theta_hi_ns": 221.62243601060885,
+        "gain_hi_ticks": -2,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 24,
+        "theta_lo_ns": -179.30028703938376,
+        "theta_hi_ns": 220.25720539863383,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": -1,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 25,
+        "theta_lo_ns": -187.49167071123378,
+        "theta_hi_ns": 193.86274690045045,
+        "gain_hi_ticks": 2,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 26,
+        "theta_lo_ns": -213.88612920941716,
+        "theta_hi_ns": 206.14982240822548,
+        "gain_hi_ticks": -3,
+        "gain_lo_ticks": 5,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 27,
+        "theta_lo_ns": -182.9409020046504,
+        "theta_hi_ns": 200.68889996032547,
+        "gain_hi_ticks": -2,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 28,
+        "theta_lo_ns": -202.96428431361713,
+        "theta_hi_ns": 202.05413057230047,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": -1,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 29,
+        "theta_lo_ns": -175.65967207411708,
+        "theta_hi_ns": 214.79628295073383,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 30,
+        "theta_lo_ns": -201.1439768309838,
+        "theta_hi_ns": 212.0658217267838,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 31,
+        "theta_lo_ns": -187.49167071123378,
+        "theta_hi_ns": 191.5873625471588,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 32,
+        "theta_lo_ns": -207.05997614954214,
+        "theta_hi_ns": 209.79043737349215,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": -6,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 33,
+        "theta_lo_ns": -189.76705506452544,
+        "theta_hi_ns": 205.2396686669088,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 34,
+        "theta_lo_ns": -188.40182445255044,
+        "theta_hi_ns": 203.41936118427546,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 35,
+        "theta_lo_ns": -188.40182445255044,
+        "theta_hi_ns": 192.04243941781712,
+        "gain_hi_ticks": -25,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 36,
+        "theta_lo_ns": -205.2396686669088,
+        "theta_hi_ns": 211.15566798546715,
+        "gain_hi_ticks": 2,
+        "gain_lo_ticks": 2,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 37,
+        "theta_lo_ns": -191.13228567650043,
+        "theta_hi_ns": 207.9701298908588,
+        "gain_hi_ticks": 1,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 38,
+        "theta_lo_ns": -198.4135156070338,
+        "theta_hi_ns": 217.52674417468384,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 39,
+        "theta_lo_ns": -186.12644009925876,
+        "theta_hi_ns": 220.7122822692922,
+        "gain_hi_ticks": -2,
+        "gain_lo_ticks": 1,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 40,
+        "theta_lo_ns": -189.76705506452544,
+        "theta_hi_ns": 199.32366934835045,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 41,
+        "theta_lo_ns": -182.9409020046504,
+        "theta_hi_ns": 195.6830543830838,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 42,
+        "theta_lo_ns": -192.95259315913378,
+        "theta_hi_ns": 220.25720539863383,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 43,
+        "theta_lo_ns": -191.5873625471588,
+        "theta_hi_ns": 211.61074485612548,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 44,
+        "theta_lo_ns": -19.113228567650044,
+        "theta_hi_ns": 16.38276734370004,
+        "gain_hi_ticks": -2,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 45,
+        "theta_lo_ns": -99.2067578035169,
+        "theta_hi_ns": 92.83568161430021,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 46,
+        "theta_lo_ns": -70.99199182270016,
+        "theta_hi_ns": 82.82399045981686,
+        "gain_hi_ticks": 2,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 47,
+        "theta_lo_ns": -76.45291427060017,
+        "theta_hi_ns": 103.75752651010023,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": -10,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 48,
+        "theta_lo_ns": -63.710761892166815,
+        "theta_hi_ns": 74.63260678796684,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": -6,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 49,
+        "theta_lo_ns": -80.09352923586685,
+        "theta_hi_ns": 89.19506664903354,
+        "gain_hi_ticks": -10,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 50,
+        "theta_lo_ns": -90.10522039035021,
+        "theta_hi_ns": 108.30829521668359,
+        "gain_hi_ticks": 2,
+        "gain_lo_ticks": 2,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 51,
+        "theta_lo_ns": -64.62091563348348,
+        "theta_hi_ns": 72.8122993053335,
+        "gain_hi_ticks": -24,
+        "gain_lo_ticks": 2,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 52,
+        "theta_lo_ns": -101.93721902746691,
+        "theta_hi_ns": 79.18337549455018,
+        "gain_hi_ticks": -26,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 53,
+        "theta_lo_ns": -81.00368297718352,
+        "theta_hi_ns": 96.47629657956689,
+        "gain_hi_ticks": -18,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 54,
+        "theta_lo_ns": -71.90214556401683,
+        "theta_hi_ns": 72.8122993053335,
+        "gain_hi_ticks": 2,
+        "gain_lo_ticks": -4,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 55,
+        "theta_lo_ns": -101.93721902746691,
+        "theta_hi_ns": 72.8122993053335,
+        "gain_hi_ticks": -18,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 56,
+        "theta_lo_ns": -88.28491290771687,
+        "theta_hi_ns": 100.11691154483357,
+        "gain_hi_ticks": -4,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 57,
+        "theta_lo_ns": -85.55445168376687,
+        "theta_hi_ns": 64.62091563348348,
+        "gain_hi_ticks": -40,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 58,
+        "theta_lo_ns": -80.09352923586685,
+        "theta_hi_ns": 86.46460542508353,
+        "gain_hi_ticks": -6,
+        "gain_lo_ticks": -6,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 59,
+        "theta_lo_ns": -88.28491290771687,
+        "theta_hi_ns": 80.09352923586685,
+        "gain_hi_ticks": -18,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 60,
+        "theta_lo_ns": -91.92552787298355,
+        "theta_hi_ns": 82.82399045981686,
+        "gain_hi_ticks": -8,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 61,
+        "theta_lo_ns": -86.46460542508353,
+        "theta_hi_ns": 72.8122993053335,
+        "gain_hi_ticks": -24,
+        "gain_lo_ticks": 2,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 62,
+        "theta_lo_ns": -85.55445168376687,
+        "theta_hi_ns": 83.73414420113353,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 63,
+        "theta_lo_ns": -85.55445168376687,
+        "theta_hi_ns": 83.73414420113353,
+        "gain_hi_ticks": -4,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 64,
+        "theta_lo_ns": -90.10522039035021,
+        "theta_hi_ns": 67.3513768574335,
+        "gain_hi_ticks": -48,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 65,
+        "theta_lo_ns": -91.92552787298355,
+        "theta_hi_ns": 84.6442979424502,
+        "gain_hi_ticks": -4,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 66,
+        "theta_lo_ns": -211.15566798546715,
+        "theta_hi_ns": 225.71812784653386,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 67,
+        "theta_lo_ns": -183.39597887530877,
+        "theta_hi_ns": 178.39013329806707,
+        "gain_hi_ticks": 2,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 68,
+        "theta_lo_ns": -182.48582513399208,
+        "theta_hi_ns": 224.8079741052172,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 69,
+        "theta_lo_ns": -219.34705165731717,
+        "theta_hi_ns": 212.52089859744217,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": -2,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 70,
+        "theta_lo_ns": -177.02490268609208,
+        "theta_hi_ns": 190.6772088058421,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 71,
+        "theta_lo_ns": -182.03074826333375,
+        "theta_hi_ns": 228.44858907048385,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 4,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 72,
+        "theta_lo_ns": -212.9759754681005,
+        "theta_hi_ns": 213.88612920941716,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 73,
+        "theta_lo_ns": -173.3842877208254,
+        "theta_hi_ns": 188.40182445255044,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 74,
+        "theta_lo_ns": -198.4135156070338,
+        "theta_hi_ns": 233.90951151838388,
+        "gain_hi_ticks": 1,
+        "gain_lo_ticks": -3,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 75,
+        "theta_lo_ns": -178.8452101687254,
+        "theta_hi_ns": 207.51505302020047,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 76,
+        "theta_lo_ns": -178.39013329806707,
+        "theta_hi_ns": 190.6772088058421,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 77,
+        "theta_lo_ns": -188.40182445255044,
+        "theta_hi_ns": 222.98766662258384,
+        "gain_hi_ticks": 1,
+        "gain_lo_ticks": -2,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 78,
+        "theta_lo_ns": -190.6772088058421,
+        "theta_hi_ns": 197.50336186571712,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 79,
+        "theta_lo_ns": -183.39597887530877,
+        "theta_hi_ns": 207.51505302020047,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 80,
+        "theta_lo_ns": -204.78459179625048,
+        "theta_hi_ns": 213.88612920941716,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 81,
+        "theta_lo_ns": -190.6772088058421,
+        "theta_hi_ns": 212.9759754681005,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 82,
+        "theta_lo_ns": -192.04243941781712,
+        "theta_hi_ns": 221.16735913995052,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 2,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 83,
+        "theta_lo_ns": -188.40182445255044,
+        "theta_hi_ns": 194.7729006417671,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 84,
+        "theta_lo_ns": -189.76705506452544,
+        "theta_hi_ns": 199.32366934835045,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 85,
+        "theta_lo_ns": -182.9409020046504,
+        "theta_hi_ns": 216.61659043336718,
+        "gain_hi_ticks": 2,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 86,
+        "theta_lo_ns": -194.7729006417671,
+        "theta_hi_ns": 214.3412060800755,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": -3,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      },
+      {
+        "a": 0,
+        "b": 87,
+        "theta_lo_ns": -192.04243941781712,
+        "theta_hi_ns": 206.6048992788838,
+        "gain_hi_ticks": 0,
+        "gain_lo_ticks": 0,
+        "round_trips": 100000,
+        "warmup_discarded": 1000,
+        "converged": true
+      }
+    ]
+  },
+  "feed": {
+    "path": "card",
+    "our_ip": "10.99.0.1",
+    "sender_ip": "10.99.0.2",
+    "cpu": 2,
+    "handler_cpu": 3,
+    "messages": 50000000,
+    "warmup_discarded": 10000,
+    "buffer_granted": 8388608,
+    "rmem_max": "4194304",
+    "busy_read": "0",
+    "busy_poll": "0",
+    "lockfree_ipc_commit": "c733131c95198f08cc9032b7ae105cfaf6f7cd88",
+    "cases": [
+      {
+        "arrangement": "one, recvmmsg",
+        "pace": 50000,
+        "achieved": 50000.05139784705,
+        "ok": true,
+        "sustained": true,
+        "packets_sent": 1124952,
+        "sent_late": 0,
+        "datagrams": 1124953,
+        "messages": 50000000,
+        "kernel_drops": 0,
+        "requests": 0,
+        "calls": 14248646,
+        "empty_calls": 13327842,
+        "cost": {
+          "count": 1114953,
+          "p50_ns": 8795.270679213629,
+          "p99_ns": 11897.074629620836,
+          "p999_ns": 14314.442966557908,
+          "max_ns": 24830.814370601358
+        },
+        "kernel_to_handled": {
+          "count": 1114952,
+          "p50_ns": 3727,
+          "p99_ns": 13327,
+          "p999_ns": 15135,
+          "max_ns": 49446
+        }
+      },
+      {
+        "arrangement": "one, recvmmsg",
+        "pace": 75000,
+        "achieved": 75000.10401800815,
+        "ok": true,
+        "sustained": true,
+        "packets_sent": 1124952,
+        "sent_late": 0,
+        "datagrams": 1124953,
+        "messages": 50000000,
+        "kernel_drops": 0,
+        "requests": 0,
+        "calls": 6685543,
+        "empty_calls": 6064176,
+        "cost": {
+          "count": 1114953,
+          "p50_ns": 8533.146401714428,
+          "p99_ns": 11431.075914066701,
+          "p999_ns": 13688.25719253204,
+          "max_ns": 20584.947167359096
+        },
+        "kernel_to_handled": {
+          "count": 1114952,
+          "p50_ns": 5855,
+          "p99_ns": 21407,
+          "p999_ns": 24895,
+          "max_ns": 61867
+        }
+      },
+      {
+        "arrangement": "one, recvmmsg",
+        "pace": 1e+05,
+        "achieved": 100000.18869301911,
+        "ok": true,
+        "sustained": true,
+        "packets_sent": 1124952,
+        "sent_late": 0,
+        "datagrams": 1124953,
+        "messages": 50000000,
+        "kernel_drops": 0,
+        "requests": 0,
+        "calls": 2920603,
+        "empty_calls": 2468405,
+        "cost": {
+          "count": 1114955,
+          "p50_ns": 8402.084262964829,
+          "p99_ns": 10863.1399794851,
+          "p999_ns": 12829.072060729104,
+          "max_ns": 19591.96943558261
+        },
+        "kernel_to_handled": {
+          "count": 1114952,
+          "p50_ns": 12191,
+          "p99_ns": 48319,
+          "p999_ns": 329215,
+          "max_ns": 467677
+        }
+      },
+      {
+        "arrangement": "one, recvmmsg",
+        "pace": 110000,
+        "achieved": 110000.23333874704,
+        "ok": true,
+        "sustained": true,
+        "packets_sent": 1124952,
+        "sent_late": 0,
+        "datagrams": 1124953,
+        "messages": 50000000,
+        "kernel_drops": 0,
+        "requests": 0,
+        "calls": 1937271,
+        "empty_calls": 1553850,
+        "cost": {
+          "count": 1114954,
+          "p50_ns": 8329.271963659494,
+          "p99_ns": 10542.765862541633,
+          "p999_ns": 12319.38596559177,
+          "max_ns": 21716.268267815718
+        },
+        "kernel_to_handled": {
+          "count": 1114952,
+          "p50_ns": 16015,
+          "p99_ns": 412159,
+          "p999_ns": 2082815,
+          "max_ns": 2194535
+        }
+      },
+      {
+        "arrangement": "one, recvmmsg",
+        "pace": 120000,
+        "achieved": 120000.50971608407,
+        "ok": false,
+        "sustained": false,
+        "packets_sent": 573405,
+        "sent_late": 0,
+        "datagrams": 547663,
+        "messages": 23371373,
+        "kernel_drops": 25691,
+        "requests": 39815,
+        "calls": 1124518,
+        "empty_calls": 1003044,
+        "cost": {
+          "count": 537663,
+          "p50_ns": 6006.559615819356,
+          "p99_ns": 10062.204687126432,
+          "p999_ns": 119295.21610498775,
+          "max_ns": 2072923.3839970028
+        },
+        "kernel_to_handled": {
+          "count": 503984,
+          "p50_ns": 14879,
+          "p99_ns": 74579967,
+          "p999_ns": 151781375,
+          "max_ns": 151891101
+        }
+      },
+      {
+        "arrangement": "one, recvmmsg",
+        "pace": 130000,
+        "achieved": 129737.52492115964,
+        "ok": false,
+        "sustained": false,
+        "packets_sent": 507640,
+        "sent_late": 39896,
+        "datagrams": 463991,
+        "messages": 19710860,
+        "kernel_drops": 43564,
+        "requests": 43372,
+        "calls": 904235,
+        "empty_calls": 800363,
+        "cost": {
+          "count": 453991,
+          "p50_ns": 5562.404590056821,
+          "p99_ns": 9304.956774350963,
+          "p999_ns": 129314.18848940164,
+          "max_ns": 3654038.822797355
+        },
+        "kernel_to_handled": {
+          "count": 412001,
+          "p50_ns": 13999,
+          "p99_ns": 93192191,
+          "p999_ns": 251133951,
+          "max_ns": 251602017
+        }
+      },
+      {
+        "arrangement": "one, recvmmsg",
+        "pace": 150000,
+        "achieved": 148943.81153761482,
+        "ok": false,
+        "sustained": false,
+        "packets_sent": 439820,
+        "sent_late": 32041,
+        "datagrams": 407779,
+        "messages": 16892857,
+        "kernel_drops": 31956,
+        "requests": 30195,
+        "calls": 580545,
+        "empty_calls": 496857,
+        "cost": {
+          "count": 397781,
+          "p50_ns": 5285.717852696554,
+          "p99_ns": 8853.520518657895,
+          "p999_ns": 124188.20261830617,
+          "max_ns": 2294608.6206157627
+        },
+        "kernel_to_handled": {
+          "count": 360421,
+          "p50_ns": 16607,
+          "p99_ns": 22708223,
+          "p999_ns": 179830783,
+          "max_ns": 180421039
+        }
+      },
+      {
+        "arrangement": "one, recvmsg",
+        "pace": 50000,
+        "achieved": 50000.041495175115,
+        "ok": true,
+        "sustained": true,
+        "packets_sent": 1124952,
+        "sent_late": 0,
+        "datagrams": 1124953,
+        "messages": 50000000,
+        "kernel_drops": 0,
+        "requests": 0,
+        "calls": 18752563,
+        "empty_calls": 17627610,
+        "cost": {
+          "count": 1114953,
+          "p50_ns": 8533.146401714428,
+          "p99_ns": 11678.637731704835,
+          "p999_ns": 14197.943287669374,
+          "max_ns": 39611.71112958406
+        },
+        "kernel_to_handled": {
+          "count": 1114952,
+          "p50_ns": 3251,
+          "p99_ns": 13807,
+          "p999_ns": 15583,
+          "max_ns": 34958
+        }
+      },
+      {
+        "arrangement": "one, recvmsg",
+        "pace": 75000,
+        "achieved": 75000.11136334918,
+        "ok": true,
+        "sustained": true,
+        "packets_sent": 1124952,
+        "sent_late": 0,
+        "datagrams": 1124953,
+        "messages": 50000000,
+        "kernel_drops": 0,
+        "requests": 0,
+        "calls": 8802191,
+        "empty_calls": 7677238,
+        "cost": {
+          "count": 1114953,
+          "p50_ns": 8518.583941853361,
+          "p99_ns": 11780.574950732302,
+          "p999_ns": 14197.943287669374,
+          "max_ns": 49916.471788771385
+        },
+        "kernel_to_handled": {
+          "count": 1114952,
+          "p50_ns": 5079,
+          "p99_ns": 22943,
+          "p999_ns": 26399,
+          "max_ns": 79742
+        }
+      },
+      {
+        "arrangement": "one, recvmsg",
+        "pace": 1e+05,
+        "achieved": 100000.19111091139,
+        "ok": true,
+        "sustained": true,
+        "packets_sent": 1124952,
+        "sent_late": 0,
+        "datagrams": 1124953,
+        "messages": 50000000,
+        "kernel_drops": 0,
+        "requests": 0,
+        "calls": 3998782,
+        "empty_calls": 2873829,
+        "cost": {
+          "count": 1114953,
+          "p50_ns": 8460.334102409095,
+          "p99_ns": 11620.387892260569,
+          "p999_ns": 14081.44360878084,
+          "max_ns": 24105.421838771974
+        },
+        "kernel_to_handled": {
+          "count": 1114952,
+          "p50_ns": 12703,
+          "p99_ns": 204287,
+          "p999_ns": 1263615,
+          "max_ns": 1332584
+        }
+      },
+      {
+        "arrangement": "one, recvmsg",
+        "pace": 110000,
+        "achieved": 110000.2313811424,
+        "ok": true,
+        "sustained": true,
+        "packets_sent": 1124952,
+        "sent_late": 0,
+        "datagrams": 1124953,
+        "messages": 50000000,
+        "kernel_drops": 0,
+        "requests": 0,
+        "calls": 2760482,
+        "empty_calls": 1635529,
+        "cost": {
+          "count": 1114953,
+          "p50_ns": 8416.646722825895,
+          "p99_ns": 11518.450673233101,
+          "p999_ns": 14066.881148919774,
+          "max_ns": 27459.338375523897
+        },
+        "kernel_to_handled": {
+          "count": 1114952,
+          "p50_ns": 24863,
+          "p99_ns": 17661951,
+          "p999_ns": 18120703,
+          "max_ns": 18201142
+        }
+      },
+      {
+        "arrangement": "one, recvmsg",
+        "pace": 120000,
+        "achieved": 111942.1442594847,
+        "ok": true,
+        "sustained": false,
+        "packets_sent": 1124952,
+        "sent_late": 719118,
+        "datagrams": 463487,
+        "messages": 50000000,
+        "kernel_drops": 661513,
+        "requests": 1151886,
+        "calls": 1662404,
+        "empty_calls": 1198917,
+        "cost": {
+          "count": 453487,
+          "p50_ns": 6217.715283804822,
+          "p99_ns": 107878.24757391146,
+          "p999_ns": 120693.21225165015,
+          "max_ns": 8741086.496531824
+        },
+        "kernel_to_handled": {
+          "count": 1527874,
+          "p50_ns": 79743,
+          "p99_ns": 28639231,
+          "p999_ns": 135004159,
+          "max_ns": 244910593
+        }
+      },
+      {
+        "arrangement": "one, recvmsg",
+        "pace": 130000,
+        "achieved": 115478.71022532733,
+        "ok": true,
+        "sustained": false,
+        "packets_sent": 1124952,
+        "sent_late": 754732,
+        "datagrams": 434748,
+        "messages": 50000000,
+        "kernel_drops": 690255,
+        "requests": 1197524,
+        "calls": 1397293,
+        "empty_calls": 962545,
+        "cost": {
+          "count": 424748,
+          "p50_ns": 6021.122075680422,
+          "p99_ns": 109276.24372057387,
+          "p999_ns": 122790.20647164376,
+          "max_ns": 8734179.339788971
+        },
+        "kernel_to_handled": {
+          "count": 1543621,
+          "p50_ns": 79615,
+          "p99_ns": 20512767,
+          "p999_ns": 127139839,
+          "max_ns": 229097775
+        }
+      },
+      {
+        "arrangement": "one, recvmsg",
+        "pace": 150000,
+        "achieved": 128588.33535102554,
+        "ok": true,
+        "sustained": false,
+        "packets_sent": 1124952,
+        "sent_late": 771128,
+        "datagrams": 412938,
+        "messages": 50000000,
+        "kernel_drops": 712074,
+        "requests": 1232954,
+        "calls": 976729,
+        "empty_calls": 563791,
+        "cost": {
+          "count": 402938,
+          "p50_ns": 5868.216247139222,
+          "p99_ns": 110907.23922501333,
+          "p999_ns": 126052.1974805227,
+          "max_ns": 8817483.891424203
+        },
+        "kernel_to_handled": {
+          "count": 1563506,
+          "p50_ns": 81663,
+          "p99_ns": 13516799,
+          "p999_ns": 126222335,
+          "max_ns": 318081417
+        }
+      },
+      {
+        "arrangement": "two",
+        "pace": 50000,
+        "achieved": 50000.049328863875,
+        "ok": true,
+        "sustained": true,
+        "packets_sent": 1124952,
+        "sent_late": 0,
+        "datagrams": 1124953,
+        "messages": 50000000,
+        "kernel_drops": 0,
+        "requests": 0,
+        "calls": 19620993,
+        "empty_calls": 18701442,
+        "cost": {
+          "count": 1114953,
+          "p50_ns": 3101.348873536549,
+          "p99_ns": 3702.0503428055504,
+          "p999_ns": 3967.8152352700176,
+          "max_ns": 17923.65762774916
+        },
+        "kernel_to_handled": {
+          "count": 1114952,
+          "p50_ns": 3623,
+          "p99_ns": 14351,
+          "p999_ns": 16127,
+          "max_ns": 36401
+        }
+      },
+      {
+        "arrangement": "two",
+        "pace": 75000,
+        "achieved": 75000.1050030538,
+        "ok": true,
+        "sustained": true,
+        "packets_sent": 1124952,
+        "sent_late": 0,
+        "datagrams": 1124953,
+        "messages": 50000000,
+        "kernel_drops": 0,
+        "requests": 0,
+        "calls": 12199685,
+        "empty_calls": 11578592,
+        "cost": {
+          "count": 1114954,
+          "p50_ns": 2500.6474042675472,
+          "p99_ns": 3556.425744194883,
+          "p999_ns": 3938.690315547884,
+          "max_ns": 9365.026921277864
+        },
+        "kernel_to_handled": {
+          "count": 1114952,
+          "p50_ns": 5791,
+          "p99_ns": 23391,
+          "p999_ns": 27167,
+          "max_ns": 73775
+        }
+      },
+      {
+        "arrangement": "two",
+        "pace": 1e+05,
+        "achieved": 100000.193048781,
+        "ok": true,
+        "sustained": true,
+        "packets_sent": 1124952,
+        "sent_late": 0,
+        "datagrams": 1124953,
+        "messages": 50000000,
+        "kernel_drops": 0,
+        "requests": 0,
+        "calls": 8565380,
+        "empty_calls": 8097696,
+        "cost": {
+          "count": 1114955,
+          "p50_ns": 2329.538500900014,
+          "p99_ns": 3152.317483050282,
+          "p999_ns": 3494.53528978535,
+          "max_ns": 19184.675636343403
+        },
+        "kernel_to_handled": {
+          "count": 1114952,
+          "p50_ns": 13071,
+          "p99_ns": 62399,
+          "p999_ns": 404479,
+          "max_ns": 571906
+        }
+      },
+      {
+        "arrangement": "two",
+        "pace": 110000,
+        "achieved": 110000.24515966888,
+        "ok": true,
+        "sustained": true,
+        "packets_sent": 1124952,
+        "sent_late": 0,
+        "datagrams": 1124953,
+        "messages": 50000000,
+        "kernel_drops": 0,
+        "requests": 0,
+        "calls": 7611225,
+        "empty_calls": 7186413,
+        "cost": {
+          "count": 1114954,
+          "p50_ns": 2227.6012818725467,
+          "p99_ns": 3094.0676436060153,
+          "p999_ns": 3392.598070757883,
+          "max_ns": 7394.999148197934
+        },
+        "kernel_to_handled": {
+          "count": 1114952,
+          "p50_ns": 16335,
+          "p99_ns": 456703,
+          "p999_ns": 1673215,
+          "max_ns": 1740380
+        }
+      },
+      {
+        "arrangement": "two",
+        "pace": 120000,
+        "achieved": 120000.28505202603,
+        "ok": true,
+        "sustained": true,
+        "packets_sent": 1124952,
+        "sent_late": 0,
+        "datagrams": 1124953,
+        "messages": 50000000,
+        "kernel_drops": 0,
+        "requests": 0,
+        "calls": 6761242,
+        "empty_calls": 6371004,
+        "cost": {
+          "count": 1114954,
+          "p50_ns": 2202.11697711568,
+          "p99_ns": 3203.2860925640157,
+          "p999_ns": 3498.1759047506166,
+          "max_ns": 4738.260377294578
+        },
+        "kernel_to_handled": {
+          "count": 1114952,
+          "p50_ns": 129407,
+          "p99_ns": 11272191,
+          "p999_ns": 11862015,
+          "max_ns": 11925742
+        }
+      },
+      {
+        "arrangement": "two",
+        "pace": 130000,
+        "achieved": 113134.72439478444,
+        "ok": true,
+        "sustained": false,
+        "packets_sent": 1124952,
+        "sent_late": 711110,
+        "datagrams": 661814,
+        "messages": 50000000,
+        "kernel_drops": 463149,
+        "requests": 806500,
+        "calls": 2271312,
+        "empty_calls": 2072848,
+        "cost": {
+          "count": 651816,
+          "p50_ns": 2507.928634198081,
+          "p99_ns": 39026.937350788096,
+          "p999_ns": 1159404.3492218158,
+          "max_ns": 4590831.398891751
+        },
+        "kernel_to_handled": {
+          "count": 1214351,
+          "p50_ns": 25983,
+          "p99_ns": 267124735,
+          "p999_ns": 319815679,
+          "max_ns": 324113088
+        }
+      },
+      {
+        "arrangement": "two",
+        "pace": 150000,
+        "achieved": 114479.65563653043,
+        "ok": true,
+        "sustained": false,
+        "packets_sent": 1124952,
+        "sent_late": 752964,
+        "datagrams": 647242,
+        "messages": 50000000,
+        "kernel_drops": 477718,
+        "requests": 829353,
+        "calls": 1807342,
+        "empty_calls": 1635723,
+        "cost": {
+          "count": 637244,
+          "p50_ns": 2515.2098641286143,
+          "p99_ns": 38153.1897591241,
+          "p999_ns": 1586259.1726694028,
+          "max_ns": 4372666.181867532
+        },
+        "kernel_to_handled": {
+          "count": 1208907,
+          "p50_ns": 26879,
+          "p99_ns": 275775487,
+          "p999_ns": 307757055,
+          "max_ns": 310003006
+        }
+      }
+    ]
+  }
+}

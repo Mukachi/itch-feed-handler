@@ -22,4 +22,6 @@ runs = ["snapshot-dev-lnx01-20261026T212236Z.json", "snapshot-dev-lnx01-20261026
 
 [feed]
 note = "007"
-runs = ["feed-dev-lnx01-20261027T004056Z.json", "feed-dev-lnx01-20261027T004554Z.json", "feed-dev-lnx01-20261027T005053Z.json"]
+runs = ["feed-dev-lnx01-20261027T004056Z.json", "feed-dev-lnx01-20261027T004554Z.json", "feed-dev-lnx01-20261027T005053Z.json",
+        "feed-dev-lnx01-20261027T011546Z.json", "feed-dev-lnx01-20261027T012737Z.json", "feed-dev-lnx01-20261027T013236Z.json",
+        "feed-dev-lnx01-20261027T013732Z.json", "feed-dev-lnx01-20261027T113615Z.json", "feed-dev-lnx01-20261027T114103Z.json"]

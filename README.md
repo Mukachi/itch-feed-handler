@@ -66,11 +66,17 @@ A GLIMPSE 5.0 snapshot at the sample day's peak of live orders: built by the sna
 <!-- /results -->
 
 <!-- results:feed-summary -->
-| Path | Arrangement | Keeps up (p99 < 100 µs) | No kernel drops | Cost p50 at 100k/s | Kernel to handled p50 | p99 |
+| Path | Arrangement | Keeps up (p99 < 100 µs) | No kernel drops | Cost p50 at 100k/s | Kernel to handled p50 at 100k/s | p99 |
 |---|---|---|---|---|---|---|
 | loopback | one, recvmmsg | 100k/s | 120k/s | 8,606–8,766 | 2,871–3,003 | 19.6 µs–27.1 µs |
 | loopback | one, recvmsg | 100k/s | 110k/s | 8,140–8,271 | 2,495–2,555 | 35.8 µs–69.5 µs |
 | loopback | two | 100k/s | 110k/s | 3,021–3,076 | 2,979–3,027 | 22.2 µs–49.9 µs |
+| the card | one, recvmmsg | 100k/s | 110k/s | 8,388–8,402 | 12.2 µs–12.3 µs | 48.1 µs–48.8 µs |
+| the card | one, recvmsg | 75k/s | 110k/s | 8,417–8,460 | 12.4 µs–12.7 µs | 169.5 µs–204.3 µs |
+| the card | two | 100k/s | 110k/s | 2,249–2,395 | 13.1 µs–13.5 µs | 56.7 µs–62.4 µs |
+| the card, kernel busy polling | one, recvmmsg | 75k/s | 110k/s | 9,596–9,625 | 22.9 µs–23.6 µs | 123.5 µs–137.7 µs |
+| the card, kernel busy polling | one, recvmsg | 75k/s | 110k/s | 8,708–8,737 | 11.1 µs–11.2 µs | 126.6 µs–189.7 µs |
+| the card, kernel busy polling | two | 100k/s | 110k/s | 5,206–5,337 | 2,711–2,787 | 30.6 µs–32.3 µs |
 
 The first 50,000,000 messages of the sample day over MoldUDP64 multicast from our sender, received, sequenced, decoded and handled on the default book, in packets a second (about 43 messages each); ns, range over runs; cost a datagram, for two threads the receiving side's alone. No kernel drops: over about ten seconds, the socket's buffer holding any backlog. Every pace and the method: [RESULTS.md](RESULTS.md).
 <!-- /results -->
