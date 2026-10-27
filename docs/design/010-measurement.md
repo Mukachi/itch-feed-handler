@@ -1,6 +1,6 @@
 # 010 — Measurement
 
-**Status:** Draft · **Updated:** 2026-10-27
+**Status:** Agreed · **Updated:** 2026-10-27
 
 ## Proposal
 
@@ -86,3 +86,4 @@ flowchart LR
 | Date | Stage | Finding |
 |---|---|---|
 | 2026-10-27 | Draft | Written for review. What it draws on: the day's rates (note 007: busiest second ~16k packets, millisecond 35k); one thread with the publisher keeps up to ~80k packets a second (note 009); a consumer must be on the publisher's node (note 008's amendment); the card's interrupts deliver bursts, busy polling removes them (note 007) |
+| 2026-10-27 | Agreed | Approved by Shep, every decision as proposed (option A each): D1 one way, intended send time to a consumer's read, stamps in shared memory; D2 open loop, the sender's lateness beside; D3 10k, 25k and 50k packets a second over the first 50 million messages, and five minutes of the open at the day's pace; D4 loopback and the card with busy polling; D5 the program's components in the benchmark, recording on and off; D6 the day's throughput from a recording, fast with and without the publisher, and the reference; D7 the measurement's own cost; D8 the report |
