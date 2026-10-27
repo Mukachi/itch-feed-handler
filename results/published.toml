@@ -19,3 +19,7 @@ runs = ["sequencer-dev-lnx01-20261026T200100Z.json", "sequencer-dev-lnx01-202610
 [snapshot]
 note = "006"
 runs = ["snapshot-dev-lnx01-20261026T212236Z.json", "snapshot-dev-lnx01-20261026T213409Z.json", "snapshot-dev-lnx01-20261026T214548Z.json"]
+
+[feed]
+note = "007"
+runs = ["feed-dev-lnx01-20261027T004056Z.json", "feed-dev-lnx01-20261027T004554Z.json", "feed-dev-lnx01-20261027T005053Z.json"]

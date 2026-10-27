@@ -66,5 +66,11 @@ A GLIMPSE 5.0 snapshot at the sample day's peak of live orders: built by the sna
 <!-- /results -->
 
 <!-- results:feed-summary -->
-Receiving figures: not yet measured (design note 007).
+| Path | Arrangement | Keeps up (p99 < 100 µs) | No kernel drops | Cost p50 at 100k/s | Kernel to handled p50 | p99 |
+|---|---|---|---|---|---|---|
+| loopback | one, recvmmsg | 100k/s | 120k/s | 8,606–8,766 | 2,871–3,003 | 19.6 µs–27.1 µs |
+| loopback | one, recvmsg | 100k/s | 110k/s | 8,140–8,271 | 2,495–2,555 | 35.8 µs–69.5 µs |
+| loopback | two | 100k/s | 110k/s | 3,021–3,076 | 2,979–3,027 | 22.2 µs–49.9 µs |
+
+The first 50,000,000 messages of the sample day over MoldUDP64 multicast from our sender, received, sequenced, decoded and handled on the default book, in packets a second (about 43 messages each); ns, range over runs; cost a datagram, for two threads the receiving side's alone. No kernel drops: over about ten seconds, the socket's buffer holding any backlog. Every pace and the method: [RESULTS.md](RESULTS.md).
 <!-- /results -->

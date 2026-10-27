@@ -349,7 +349,7 @@ def feed_rows(lf, fs):
     for i, c0 in enumerate(fs[0]["cases"]):
         cs = [f["cases"][i] for f in fs]
         sus = [c for c in cs if c["sustained"]]
-        rows.append([c0["arrangement"], lf.rate(c0["pace"]), lf.rng([c["achieved"] for c in cs], lf.rate),
+        rows.append([c0["arrangement"], lf.rate(c0["pace"]), lf.rng([round(c["achieved"], -2) for c in cs], lf.rate),
                      lf.rng([c["kernel_drops"] for c in cs], lambda v: f"{v:,}")]
                     + [lf.rng([c["cost"][f] for c in sus]) for f in ("p50_ns", "p99_ns")]
                     + [lf.rng([c["kernel_to_handled"][f] for c in sus]) for f in ("p50_ns", "p99_ns", "p999_ns")])
@@ -359,19 +359,29 @@ def feed_rows(lf, fs):
 FEED_HEAD = ["Arrangement", "Pace", "Achieved", "Kernel drops", "Cost p50", "Cost p99", "Kernel to handled p50", "p99", "p99.9"]
 
 
+KEEPS_UP_P99_NS = 100_000  # S6 amended: the receiver keeps up while kernel to handled p99 stays under 100 us
+
+
+def highest(fs, a, ok):
+    # Each run's highest pace meeting `ok` for arrangement `a`, the lowest of those over the runs.
+    return min(max([c["pace"] for c in f["cases"] if c["arrangement"] == a and ok(c)], default=0) for f in fs)
+
+
 def feed_summary_rows(lf, paths):
     rows = []
     for p, fs in paths.items():
         for a in dict.fromkeys(c["arrangement"] for c in fs[0]["cases"]):
-            # The highest pace sustained in every run: each run's highest without kernel drops, the lowest of those.
-            best = min(max([c["pace"] for c in f["cases"] if c["arrangement"] == a and c["sustained"]], default=0) for f in fs)
+            no_drops = highest(fs, a, lambda c: c["sustained"])
+            keeps_up = highest(fs, a, lambda c: c["sustained"] and c["kernel_to_handled"]["p99_ns"] < KEEPS_UP_P99_NS)
             at = [c for f in fs for c in f["cases"] if c["arrangement"] == a and c["pace"] == 100_000 and c["sustained"]]
-            rows.append([FEED_PATHS.get(p, p), a, lf.rate(best) if best else "–", lf.rng([c["cost"]["p50_ns"] for c in at])]
+            rows.append([FEED_PATHS.get(p, p), a, lf.rate(keeps_up) if keeps_up else "–", lf.rate(no_drops) if no_drops else "–",
+                         lf.rng([c["cost"]["p50_ns"] for c in at])]
                         + [lf.rng([c["kernel_to_handled"][f] for c in at]) for f in ("p50_ns", "p99_ns")])
     return rows
 
 
-FEED_SUMMARY_HEAD = ["Path", "Arrangement", "Highest pace, no kernel drops", "Cost p50 at 100k/s", "Kernel to handled p50", "p99"]
+FEED_SUMMARY_HEAD = ["Path", "Arrangement", "Keeps up (p99 < 100 µs)", "No kernel drops", "Cost p50 at 100k/s",
+                     "Kernel to handled p50", "p99"]
 
 
 def feed_section(lf, note, runs):
@@ -384,8 +394,12 @@ def feed_section(lf, note, runs):
              "(`recvmsg`), or two threads (receiving on CPU 2, handling on CPU 3, lockfree-ipc's SPSC ring between), behind them "
              "the default decoder and the handler on the default book. Achieved: the sender's packets over its first to last "
              "sending. Kernel drops: the socket's own count (`SO_RXQ_OVFL`), receive buffer "
-             f"{f0['buffer_granted'] // 1024:,} KB as granted (`rmem_max` {f0['rmem_max']}); a case with drops is overloaded "
-             "and its costs are left out. Cost: each receiving pass that found datagrams, timed between start() and stop(), "
+             f"{f0['buffer_granted'] // 1024:,} KB as the kernel reports it (4 MB asked, `rmem_max` {int(f0['rmem_max']) // 1024:,} KB; "
+             "the kernel doubles it for its own bookkeeping); a case with drops is overloaded and its costs are left out. No kernel "
+             "drops is not the same as keeping up: near the limit the receiver falls behind and the buffer holds the backlog for "
+             "the ten seconds or so a case lasts (kernel to handled p99 in milliseconds), and a longer run would drop; so the "
+             "summary also gives the highest pace at which the receiver keeps up, kernel to handled p99 under 100 µs, each the "
+             "lowest over the runs. Cost: each receiving pass that found datagrams, timed between start() and stop(), "
              "divided among them (one thread: everything to the handler; two: the receiving side alone). Kernel to handled: a "
              "datagram's kernel receive stamp (`SO_TIMESTAMPNS`) to its first message handled (`CLOCK_REALTIME`). The first "
              f"{f0['warmup_discarded']:,} of each discarded. Ranges over runs.", ""]
@@ -428,8 +442,9 @@ def readme_blocks(lf, sets):
         runs = sets["feed"][1]
         blocks["feed-summary"] = (lf.table(FEED_SUMMARY_HEAD, feed_summary_rows(lf, feed_by_path(runs)))
                                   + f"\n\nThe first {runs[0][1]['feed']['messages']:,} messages of the sample day over MoldUDP64 "
-                                  "multicast from our sender, received, sequenced, decoded and handled on the default book; ns, range "
-                                  "over runs. Every pace and the method: [RESULTS.md](RESULTS.md).\n")
+                                  "multicast from our sender, received, sequenced, decoded and handled on the default book, in packets "
+                                  "a second (about 43 messages each); ns, range over runs; cost a datagram, for two threads the receiving side's alone. No kernel drops: over about ten seconds, the "
+                                  "socket's buffer holding any backlog. Every pace and the method: [RESULTS.md](RESULTS.md).\n")
     if "snapshot" in sets:
         runs = sets["snapshot"][1]
         rows = [r for r in snapshot_rows(lf, runs) if "peak" in r[0]]

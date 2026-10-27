@@ -13,6 +13,7 @@ HP ProLiant DL380 Gen9, BIOS P89 (08/29/2024); 2 × Intel(R) Xeon(R) CPU E5-2699
 | decoder (note 004) | 3 | 2026-10-26 16:05 UTC | a48804a | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | sequencer (note 005) | 6 | 2026-10-26 20:01 UTC | 695b3bf | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | snapshot (note 006) | 3 | 2026-10-26 21:22 UTC | 92bd97d | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
+| feed (note 007) | 3 | 2026-10-27 00:40 UTC | ee4adfe | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 
 Every run met note 004's bench-mode conditions (each file's `environment.bench_mode`, checked before use) and was built clean; compiler and flags are in each file's `environment.build`. Ranges are min–max over a set's runs.
 
@@ -283,3 +284,33 @@ The sample day `01302020.NASDAQ_ITCH50.gz` followed by the snapshot server (the 
 | 350,000,001 | 1,771,672 | 1,798,400 | 72 | 1,095–1,097 | 333–340 |
 | 400,000,001 | 1,871,048 | 1,897,776 | 76 | 1,171–1,174 | 352–359 |
 | 412,349,206 (the peak) | 1,925,638 | 1,952,366 | 79 | 1,211–1,215 | 362–369 |
+
+## Receiving the feed (note 007)
+
+The first 50,000,000 messages of the sample day (about 1.16 million MoldUDP64 packets) sent by our sender (its own process, on its own reserved CPU; for the card, in the far port's network namespace) onto a multicast group at each pace, into each arrangement: one thread (CPU 2) reading in batches (`recvmmsg`) or a datagram a call (`recvmsg`), or two threads (receiving on CPU 2, handling on CPU 3, lockfree-ipc's SPSC ring between), behind them the default decoder and the handler on the default book. Achieved: the sender's packets over its first to last sending. Kernel drops: the socket's own count (`SO_RXQ_OVFL`), receive buffer 8,192 KB as the kernel reports it (4 MB asked, `rmem_max` 4,096 KB; the kernel doubles it for its own bookkeeping); a case with drops is overloaded and its costs are left out. No kernel drops is not the same as keeping up: near the limit the receiver falls behind and the buffer holds the backlog for the ten seconds or so a case lasts (kernel to handled p99 in milliseconds), and a longer run would drop; so the summary also gives the highest pace at which the receiver keeps up, kernel to handled p99 under 100 µs, each the lowest over the runs. Cost: each receiving pass that found datagrams, timed between start() and stop(), divided among them (one thread: everything to the handler; two: the receiving side alone). Kernel to handled: a datagram's kernel receive stamp (`SO_TIMESTAMPNS`) to its first message handled (`CLOCK_REALTIME`). The first 10,000 of each discarded. Ranges over runs.
+
+### Over loopback (3 runs; `busy_read` 0, `busy_poll` 0)
+
+| Arrangement | Pace | Achieved | Kernel drops | Cost p50 | Cost p99 | Kernel to handled p50 | p99 | p99.9 |
+|---|---|---|---|---|---|---|---|---|
+| one, recvmmsg | 50k/s | 50k/s | 0 | 8,533–8,635 | 11.5 µs–11.7 µs | 2,675–2,815 | 3,347–3,487 | 3,679–3,751 |
+| one, recvmmsg | 75k/s | 75k/s | 0 | 8,504–8,693 | 11.5 µs–11.7 µs | 2,735–2,819 | 3,439–5,351 | 7,167–9,583 |
+| one, recvmmsg | 100k/s | 100k/s | 0 | 8,606–8,766 | 11.5 µs–11.6 µs | 2,871–3,003 | 19.6 µs–27.1 µs | 129.3 µs–251.9 µs |
+| one, recvmmsg | 110k/s | 110k/s | 0 | 8,519–8,562 | 11.2 µs | 5,639–7,919 | 185.3 µs–273.4 µs | 949.2 µs–1,339.4 µs |
+| one, recvmmsg | 120k/s | 120k/s | 0 | 8,023–8,067 | 10.0 µs–10.1 µs | 17.6 µs–27.0 µs | 3,235.8 µs–9,109.5 µs | 3,756.0 µs–9,863.2 µs |
+| one, recvmmsg | 130k/s | 130k/s | 20,508–53,910 | – | – | – | – | – |
+| one, recvmmsg | 150k/s | 148.9k/s–149.8k/s | 26,262–47,281 | – | – | – | – | – |
+| one, recvmsg | 50k/s | 50k/s | 0 | 8,155–8,300 | 11.1 µs–11.3 µs | 2,483–2,535 | 3,091–3,131 | 3,351–3,559 |
+| one, recvmsg | 75k/s | 75k/s | 0 | 8,111–8,227 | 11.1 µs–11.3 µs | 2,447–2,495 | 3,043–4,083 | 5,367–7,695 |
+| one, recvmsg | 100k/s | 100k/s | 0 | 8,140–8,271 | 11.1 µs–11.3 µs | 2,495–2,555 | 35.8 µs–69.5 µs | 338.9 µs–527.4 µs |
+| one, recvmsg | 110k/s | 110k/s | 0 | 8,140–8,242 | 11.1 µs–11.2 µs | 2,743–3,003 | 946.2 µs–2,105.3 µs | 2,469.9 µs–3,309.6 µs |
+| one, recvmsg | 120k/s | 120k/s | 629,757–657,646 | – | – | – | – | – |
+| one, recvmsg | 130k/s | 128.9k/s–130k/s | 687,018–708,299 | – | – | – | – | – |
+| one, recvmsg | 150k/s | 137.6k/s–140.1k/s | 726,872–732,499 | – | – | – | – | – |
+| two | 50k/s | 50k/s | 0 | 2,988–3,076 | 3,516–3,596 | 2,867–2,943 | 3,571–3,623 | 3,843–4,007 |
+| two | 75k/s | 75k/s | 0 | 3,058–3,087 | 3,596–3,604 | 2,923–2,967 | 3,619–4,487 | 5,311–8,151 |
+| two | 100k/s | 100k/s | 0 | 3,021–3,076 | 3,524–3,578 | 2,979–3,027 | 22.2 µs–49.9 µs | 286.2 µs–576.5 µs |
+| two | 110k/s | 110k/s | 0 | 3,003–3,039 | 3,556–3,596 | 3,187–3,323 | 343.6 µs–523.8 µs | 1,132.5 µs–1,587.2 µs |
+| two | 120k/s | 118.9k/s–120k/s | 0–363,176 | 2,919–2,967 | 3,596–3,637 | 27.1 µs–75.6 µs | 4,603.9 µs–6,529.0 µs | 5,201.9 µs–6,864.9 µs |
+| two | 130k/s | 119.7k/s–120k/s | 447,352–460,352 | – | – | – | – | – |
+| two | 150k/s | 125.9k/s–126.5k/s | 473,216–489,177 | – | – | – | – | – |
