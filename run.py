@@ -22,7 +22,7 @@ import sys
 import tomllib
 from pathlib import Path
 
-SETS = ("book", "handler", "decoder", "sequencer", "snapshot", "feed", "publish", "record")
+SETS = ("book", "handler", "decoder", "sequencer", "snapshot", "feed", "publish", "record", "e2e", "throughput")
 BLOCK = re.compile(r"(<!-- results:(?P<name>[a-z0-9-]+) -->\n)(?P<body>.*?)(<!-- /results -->)", re.S)
 MEAN = re.compile(r"\b(mean|average|avg)\b", re.I)
 
@@ -502,6 +502,81 @@ def record_section(lf, note, runs):
             lf.table(RECORD_HEAD, record_rows(lf, runs)), ""]
 
 
+# ---------------------------------------------------------------- note 010
+
+E2E_PATHS = {"loopback": "loopback", "card-busy-poll": "the card, kernel busy polling"}
+
+
+def e2e_by_path(runs):
+    paths = {}
+    for _, d in runs:
+        paths.setdefault(d["e2e"]["path"], []).append(d["e2e"])
+    for p, es in paths.items():
+        keys = [[(c["name"], c["recording"]) for c in e["cases"]] for e in es]
+        if any(k != keys[0] for k in keys) or not all(c["ok"] for e in es for c in e["cases"]):
+            raise ReportError(f"e2e: {p} runs took different cases, or a case was not whole")
+    return paths
+
+
+def e2e_rows(lf, es):
+    rows = []
+    for i, c0 in enumerate(es[0]["cases"]):
+        cs = [e["cases"][i] for e in es]
+        rows.append([c0["name"], "on" if c0["recording"] else "off", f"{c0['messages']:,}"]
+                    + [lf.rng([c["packet_to_update"][f] for c in cs]) for f in ("p50_ns", "p99_ns", "p999_ns", "max_ns")]
+                    + [lf.rng([c["sender_late_max_ns"] for c in cs]), lf.rng([c["kernel_drops"] for c in cs], lambda v: f"{v:,}")])
+    return rows
+
+
+E2E_HEAD = ["Case", "Recording", "Messages", "p50", "p99", "p99.9", "max", "Sender late, max", "Kernel drops"]
+
+
+def e2e_section(lf, note, runs):
+    paths = e2e_by_path(runs)
+    e0 = runs[0][1]["e2e"]
+    oc = e0["own_cost"]
+    lines = [f"## Packet to published update (note {note})", "",
+             "One way, open loop: from the time our sender meant to send a packet (its schedule, not when it got to it, so a late "
+             "sender or a backed-up receiver shows here) to the time a consumer, its own process on CPU "
+             f"{e0['consumer_cpu']} (the publisher's node), reads the first update one of its messages caused. The sender writes each "
+             "message's intended time (CLOCK_MONOTONIC) into shared memory before sending; the consumer subtracts it on reading. "
+             f"On CPU {e0['cpu']}, the program's components: one thread reading a datagram a call, the default book and handler, the "
+             f"publisher, the recorder on or off (its writer on CPU {e0['writer_cpu']}). A packet carries about 43 messages handled "
+             "one after another, so a message later in its packet waits for those before it: that is in these figures. Fixed "
+             "paces over the first 50,000,000 messages; the open, five minutes from 09:29:30 at the day's own pace. Every message "
+             "handled once, no consumer overrun or on another node. The measurement's own cost: the clock pair "
+             f"{oc['clock_pair_p50_ns']:.0f} ns, a stamp write {oc['stamp_write_p50_ns']:.0f} ns and a clock read "
+             f"{oc['clock_read_p50_ns']:.0f} ns, each with the pair (p50, the first run). The first "
+             f"{e0['warmup_discarded']:,} of each case discarded. Ranges over runs.", ""]
+    for p, es in paths.items():
+        lines += [f"### Over {E2E_PATHS.get(p, p)} ({len(es)} runs)", "", lf.table(E2E_HEAD, e2e_rows(lf, es)), ""]
+    return lines
+
+
+def throughput_rows(lf, runs):
+    ts = [d["throughput"] for _, d in runs]
+    names = [c["name"] for c in ts[0]["cases"]]
+    for t in ts:
+        if [c["name"] for c in t["cases"]] != names or not all(c["ok"] for c in t["cases"]):
+            raise ReportError("throughput: runs took different cases, or a case was not whole")
+    return [[n, lf.rng([t["cases"][i]["messages_per_s"] / 1e6 for t in ts], lambda v: f"{v:.2f}"),
+             lf.rng([t["cases"][i]["seconds"] for t in ts], lambda v: f"{v:.1f}")] for i, n in enumerate(names)]
+
+
+THROUGHPUT_HEAD = ["Case", "M messages/s", "Seconds for the day"]
+
+
+def throughput_section(lf, note, runs):
+    t0 = runs[0][1]["throughput"]
+    return [f"## Throughput over the day (note {note})", "",
+            f"The whole sample day `{t0['source']}` ({t0['messages']:,} messages) from a recording ({t0['recording_bytes'] / 1e9:.1f} GB, "
+            "read from the page cache, in the figure) at full speed through the sequencer, the default decoder and a handler on one "
+            f"pinned CPU (CPU {t0['cpu']}); no network (the kernel's part is note 007's). Fast: the handler on the default book; "
+            f"published: with the publisher and one consumer, its own process on CPU {t0['consumer_cpu']}, reading only; reference: "
+            "the reference handler on the reference book (no publisher). Every message once, the feed ended. "
+            f"{len(runs)} runs; ranges over them.", "", lf.table(THROUGHPUT_HEAD, throughput_rows(lf, runs)), ""]
+
+
 def results_md(lf, sets):
     lines = ["# Results", "",
              "Generated by `python run.py report` from the runs listed in `results/published.toml`. "
@@ -526,6 +601,10 @@ def results_md(lf, sets):
         lines += publish_section(lf, *sets["publish"])
     if "record" in sets:
         lines += record_section(lf, *sets["record"])
+    if "e2e" in sets:
+        lines += e2e_section(lf, *sets["e2e"])
+    if "throughput" in sets:
+        lines += throughput_section(lf, *sets["throughput"])
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -536,7 +615,22 @@ def readme_blocks(lf, sets):
               "snapshot-summary": "Snapshot figures: not yet measured (design note 006).\n",
               "feed-summary": "Receiving figures: not yet measured (design note 007).\n",
               "publish-summary": "Publication figures: not yet measured (design note 008).\n",
-              "record-summary": "Recording figures: not yet measured (design note 009).\n"}
+              "record-summary": "Recording figures: not yet measured (design note 009).\n",
+              "e2e-summary": "End-to-end figures: not yet measured (design note 010).\n"}
+    if "e2e" in sets and "throughput" in sets:
+        paths = e2e_by_path(sets["e2e"][1])
+        rows = []
+        for p, es in paths.items():
+            for i, c0 in enumerate(es[0]["cases"]):
+                if c0["recording"] and c0["name"] in ("25k/s", "the open, its own pace"):
+                    cs = [e["cases"][i] for e in es]
+                    rows.append([E2E_PATHS.get(p, p), c0["name"]] + [lf.rng([c["packet_to_update"][f] for c in cs]) for f in ("p50_ns", "p99_ns", "p999_ns")])
+        tp = throughput_rows(lf, sets["throughput"][1])
+        blocks["e2e-summary"] = (lf.table(["Path", "Case", "Packet to published update p50", "p99", "p99.9"], rows)
+                                 + "\n\n" + lf.table(THROUGHPUT_HEAD, tp)
+                                 + "\n\nOne way, open loop, from the packet's intended send time to a consumer process reading the update, "
+                                 "recording on; and the whole day from a recording at full speed. ns, range over runs. The method and "
+                                 "every pace: [RESULTS.md](RESULTS.md).\n")
     if "record" in sets:
         runs = sets["record"][1]
         blocks["record-summary"] = (lf.table(RECORD_HEAD, record_rows(lf, runs))

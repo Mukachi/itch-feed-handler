@@ -27,13 +27,21 @@ struct sender_config {
     double drop = 0;           // share of packets not sent (their first sending only)
     std::uint64_t seed = 7;
     std::int64_t heartbeat_ns = 1'000'000'000;
-    std::uint64_t last = 0;    // > 0: only messages 1..last, the session ending there
+    std::uint64_t first = 1;   // the first message sent (note 010: the open, mid-day); the receiver must expect it
+    std::uint64_t last = 0;    // > 0: only messages first..last, the session ending there
+    // Note 010, D1: told of each packet's messages and its intended send time
+    // (monotonic ns), before it is sent; nullptr: nothing.
+    void (*stamp)(void* ctx, std::uint64_t first, std::uint64_t count, std::int64_t due_ns) = nullptr;
+    void* stamp_ctx = nullptr;
     int end_markers = 5;       // end-of-session packets after the last, a millisecond apart, then one a heartbeat
 };
 
 struct sender_counts {
     std::uint64_t packets = 0, dropped = 0, heartbeats = 0, requests = 0, answered = 0, behind = 0;
     std::int64_t first_ns = 0, last_ns = 0;  // the first and last packets' sending (monotonic)
+    // Note 010, D2: how late each packet went, against its intended time.
+    std::int64_t late_max_ns = 0;
+    std::uint64_t late_over_10us = 0, late_over_100us = 0;
 };
 
 inline std::int64_t monotonic_ns() {
@@ -53,8 +61,8 @@ public:
         unsigned char pk[mold::header_size + mold::payload];
         const std::int64_t t0 = monotonic_ns();
         std::int64_t last_sent = t0;
-        std::uint64_t first = 1, sent = 0;
-        const std::uint64_t day_start = timestamp_of(1);
+        std::uint64_t first = cfg_.first > 0 ? cfg_.first : 1, sent = 0;
+        const std::uint64_t day_start = timestamp_of(first);
         const std::uint64_t end = cfg_.last > 0 && cfg_.last < store_.count() ? cfg_.last : store_.count();
         while (first <= end && !stop.load(std::memory_order_relaxed)) {
             const std::int64_t due = cfg_.packets_per_s > 0
@@ -74,6 +82,12 @@ public:
             }
             const std::size_t n = store_.fill(first, end - first + 1, pk);
             const std::uint64_t count = mold::read_header(pk).count;
+            if (cfg_.stamp) cfg_.stamp(cfg_.stamp_ctx, first, count, due);
+            if (const std::int64_t late = monotonic_ns() - due; late > 0) {
+                if (late > counts_.late_max_ns) counts_.late_max_ns = late;
+                counts_.late_over_10us += late > 10'000;
+                counts_.late_over_100us += late > 100'000;
+            }
             if (cfg_.drop > 0 && std::uniform_real_distribution<double>(0, 1)(rng_) < cfg_.drop) ++counts_.dropped;
             else out_.send(pk, n);
             ++counts_.packets;

@@ -75,10 +75,10 @@ flowchart LR
 
 ## Tasks
 
-- [ ] The sender's stamps and starting message (D1–D3)
-- [ ] The benchmark: paces, the open, both paths, recording on and off (D3–D5)
-- [ ] Throughput over the day (D6); the measurement's own cost (D7)
-- [ ] The report and README summary (D8)
+- [x] The sender's stamps and starting message (D1–D3)
+- [x] The benchmark: paces, the open, both paths, recording on and off (D3–D5)
+- [x] Throughput over the day (D6); the measurement's own cost (D7)
+- [x] The report and README summary (D8)
 - [ ] Bench-mode runs, published
 
 ## Review
@@ -87,3 +87,4 @@ flowchart LR
 |---|---|---|
 | 2026-10-27 | Draft | Written for review. What it draws on: the day's rates (note 007: busiest second ~16k packets, millisecond 35k); one thread with the publisher keeps up to ~80k packets a second (note 009); a consumer must be on the publisher's node (note 008's amendment); the card's interrupts deliver bursts, busy polling removes them (note 007) |
 | 2026-10-27 | Agreed | Approved by Shep, every decision as proposed (option A each): D1 one way, intended send time to a consumer's read, stamps in shared memory; D2 open loop, the sender's lateness beside; D3 10k, 25k and 50k packets a second over the first 50 million messages, and five minutes of the open at the day's pace; D4 loopback and the card with busy polling; D5 the program's components in the benchmark, recording on and off; D6 the day's throughput from a recording, fast with and without the publisher, and the reference; D7 the measurement's own cost; D8 the report |
+| 2026-10-27 | Agreed (building) | **Built.** `mold_sender` gains a starting message, a stamp hook (each packet's messages and intended send time, before the send) and its own lateness (the most, and how many packets over 10 and 100 µs); `feed_sender` a longer run command (the day's own pace, ITCH times from and to, answered with the messages they resolve to) and a stamps array (`bench/stamps.hpp`: 4 million slots by sequence number, CLOCK_MONOTONIC, one clock for every process, shared across the card's namespace through `/dev/shm`); `bench/e2e_bench` (D1–D5, D7) and `bench/throughput_bench` (D6: the day's recording made once into the build directory, 13.4 GB, and replayed by every case); `run.py`'s two sections and a README summary. `feed_test`: a run from message 30,001 to 50,000 against a receiver expecting 30,001, every message stamped before its packet, none outside. Trials outside bench mode (not published): packet to published update p50 11.2–12.5 µs at 10k–50k packets a second (the in-packet wait in it: ~43 messages handled one after another at ~190 ns each with publishing), the open 13.2 µs p50, 76 µs p99.9; at 50k the tail reaches milliseconds (one thread ~60% busy with publishing); the stamp write costs no more than the clock pair timing it (43 ns), the clock read ~50 ns net; the day: fast 4.29 M messages a second (98.7 s), published to one consumer 2.58 M, reference 1.00 M |

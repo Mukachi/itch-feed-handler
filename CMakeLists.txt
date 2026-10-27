@@ -144,6 +144,13 @@ add_executable(publish_bench bench/publish_bench.cpp)
 target_link_libraries(publish_bench PRIVATE itchfh lfipc Threads::Threads)
 target_compile_definitions(publish_bench PRIVATE LFIPC_RESULTS_DIR="${CMAKE_SOURCE_DIR}/results"
                                                  ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+add_executable(throughput_bench bench/throughput_bench.cpp)
+target_link_libraries(throughput_bench PRIVATE itchfh lfipc Threads::Threads)
+target_compile_definitions(throughput_bench PRIVATE LFIPC_RESULTS_DIR="${CMAKE_SOURCE_DIR}/results" ITCHFH_RECORD_DIR="${CMAKE_BINARY_DIR}"
+                                                    ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+add_executable(e2e_bench bench/e2e_bench.cpp)
+target_link_libraries(e2e_bench PRIVATE itchfh lfipc Threads::Threads)
+target_compile_definitions(e2e_bench PRIVATE LFIPC_RESULTS_DIR="${CMAKE_SOURCE_DIR}/results" ITCHFH_RECORD_DIR="${CMAKE_BINARY_DIR}")
 add_executable(record_bench bench/record_bench.cpp)
 target_link_libraries(record_bench PRIVATE itchfh lfipc Threads::Threads)
 target_compile_definitions(record_bench PRIVATE LFIPC_RESULTS_DIR="${CMAKE_SOURCE_DIR}/results" ITCHFH_RECORD_DIR="${CMAKE_BINARY_DIR}")

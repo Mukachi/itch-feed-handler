@@ -227,6 +227,56 @@ void slow_receiver(const world& w) {
               "; state " + std::to_string(static_cast<int>(o.state)));
 }
 
+// Note 010: a run from the middle of the session (the open), each packet's
+// messages stamped with its intended send time before it is sent.
+void from_the_middle(const world& w) {
+    std::string why;
+    udp::receiver rx;
+    udp::receiver::options ro;
+    ro.port = 26490;
+    udp::sender tx;
+    if (!rx.open(ro, why) || !tx.open(ro.group, 26490, "127.0.0.1", 26491, why)) {
+        check(false, "note 010: the sockets: " + why);
+        return;
+    }
+    rx.set_server("127.0.0.1", 26491);
+    struct stamps_seen {
+        std::vector<std::int64_t> due;
+        std::uint64_t calls = 0;
+        bool before_send = true;
+    } seen;
+    seen.due.assign(w.all.size() + 2, 0);
+    sender_config sc;
+    sc.packets_per_s = 5'000;
+    sc.first = 30'001;
+    sc.last = 50'000;
+    sc.stamp_ctx = &seen;
+    sc.stamp = [](void* ctx, std::uint64_t first, std::uint64_t count, std::int64_t due) {
+        auto* s = static_cast<stamps_seen*>(ctx);
+        ++s->calls;
+        for (std::uint64_t q = first; q < first + count; ++q) s->due[q] = due;
+        if (monotonic_ns() < due - 1'000'000) s->before_send = false;  // never told of a packet long before its time
+    };
+    client c;
+    mold_sender s(*w.store, tx, sc);
+    std::atomic<bool> stop{false};
+    std::thread st([&] { s.run(stop); });
+    sequencer_config qc = small_seq();
+    qc.first_expected = 30'001;
+    feed_one<quiet_handler> f(rx, *c.h, qc);
+    const std::int64_t give_up = monotonic_ns() + 60'000'000'000;
+    while (f.seq().state() != feed_state::ended && f.seq().state() != feed_state::lost && monotonic_ns() < give_up) f.poll();
+    stop = true;
+    st.join();
+    bool stamped = true;
+    for (std::uint64_t q = 30'001; q <= 50'000; ++q) stamped = stamped && seen.due[q] > 0;
+    stamped = stamped && seen.due[30'000] == 0 && seen.due[50'001] == 0;
+    check(f.seq().state() == feed_state::ended && f.counts().messages == 20'000 && f.seq().counts().gaps == 0 && stamped &&
+              seen.calls == s.counts().packets && seen.before_send,
+          "note 010: a run from message 30,001 to 50,000, the receiver expecting 30,001: those 20,000 messages handled, no gap; "
+          "each packet's messages stamped with its intended time, before it was sent, and none outside the run");
+}
+
 void malformed_datagrams(const world& w) {
     const outcome o = run(w, 26440, 0, false, true, true);
     check(o.malformed == 2 && o.books.empty() && o.state == feed_state::ended,
@@ -309,6 +359,7 @@ int main() {
     over_loopback(w);
     kernel_drops(w);
     slow_receiver(w);
+    from_the_middle(w);
     malformed_datagrams(w);
     recorded_replay(w);
     return itchfh::test::result();

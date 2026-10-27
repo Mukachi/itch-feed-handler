@@ -103,3 +103,7 @@ The sample day's first 50,000,000 messages through the handler and its publisher
 
 The receive path with the recorder off and on: one thread over loopback, ns, range over runs. The writer flat out and the method: [RESULTS.md](RESULTS.md).
 <!-- /results -->
+
+<!-- results:e2e-summary -->
+End-to-end figures: not yet measured (design note 010).
+<!-- /results -->

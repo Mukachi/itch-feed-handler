@@ -7,17 +7,24 @@
 //   R  run: session (10 bytes), packets a second (double), share dropped
 //      (double), last message (u64, 0 the whole day): sends messages 1..last
 //      onto the group, then the end of session until the next command,
-//      answering re-requests throughout (mold_sender.hpp)
+//      answering re-requests throughout (mold_sender.hpp); and, for note 010,
+//      a longer form adding the day's own pace sped up by (double, 0: the
+//      fixed pace) and the ITCH times from and to (u64 ns since midnight, 0:
+//      from 1 and to `last`), answered with the first and last messages the
+//      times resolve to (two u64), which the receiver must expect
 //   S  stop the run; the reply is its counts (sender_counts, as laid out here)
 //   Q  quit
 // The sending runs on `cpu` (a reserved one); the control thread blocks on
-// its socket, pinned to `control cpu` (a housekeeping one).
+// its socket, pinned to `control cpu` (a housekeeping one). Given a stamps
+// name, it writes each message's intended send time there (note 010, D1).
 // Design: docs/design/007-receiver-framer.md
 //
-// Usage: feed_sender <interface ip> <group> <port> <request port> <cpu> <control cpu> [day.gz]
+// Usage: feed_sender <interface ip> <group> <port> <request port> <cpu> <control cpu> [day.gz [stamps name]]
 #include <itchfh/mold_sender.hpp>
 #include <itchfh/session_store.hpp>
 #include <itchfh/udp.hpp>
+
+#include "stamps.hpp"
 
 #include <lfipc/bench/cross_cpu.hpp>
 
@@ -38,8 +45,8 @@ namespace {
 struct command {
     char what = 0;
     fh::mold::session_id session{};
-    double pace = 0, drop = 0;
-    std::uint64_t last = 0;
+    double pace = 0, drop = 0, speed = 0;
+    std::uint64_t last = 0, from_ns = 0, to_ns = 0, first = 1;
 };
 
 // A command's layout: the letter, then for R the fields in order, unpadded.
@@ -47,12 +54,30 @@ bool read_command(const unsigned char* p, std::size_t n, command& c) {
     if (n < 1) return false;
     c.what = static_cast<char>(p[0]);
     if (c.what != 'R') return c.what == 'S' || c.what == 'Q';
-    if (n != 1 + 10 + 8 + 8 + 8) return false;
+    if (n != 1 + 10 + 8 + 8 + 8 && n != 1 + 10 + 8 + 8 + 8 + 8 + 8 + 8) return false;
     std::memcpy(c.session.data(), p + 1, 10);
     std::memcpy(&c.pace, p + 11, 8);
     std::memcpy(&c.drop, p + 19, 8);
     std::memcpy(&c.last, p + 27, 8);
-    return c.pace > 0;
+    if (n > 35) {
+        std::memcpy(&c.speed, p + 35, 8);
+        std::memcpy(&c.from_ns, p + 43, 8);
+        std::memcpy(&c.to_ns, p + 51, 8);
+    }
+    return c.pace > 0 || c.speed > 0;
+}
+
+// The first message whose timestamp is at or after `t` (timestamps never go back within a day).
+std::uint64_t first_at(const fh::session_store& st, std::uint64_t t) {
+    std::uint64_t lo = 1, hi = st.count() + 1;
+    while (lo < hi) {
+        const std::uint64_t mid = lo + (hi - lo) / 2;
+        std::size_t len;
+        const unsigned char* m = st.message(mid, len);
+        if ((len >= 11 ? fh::mold::detail::be(m + 5, 6) : 0) < t) lo = mid + 1;
+        else hi = mid;
+    }
+    return lo;
 }
 
 }  // namespace
@@ -87,6 +112,11 @@ int main(int argc, char** argv) {
         return 1;
     }
     std::string why;
+    fh::bench::stamp_array* stamps = nullptr;
+    if (argc > 8 && !(stamps = fh::bench::open_stamps(argv[8], true, why))) {
+        std::fprintf(stderr, "feed_sender: %s\n", why.c_str());
+        return 1;
+    }
     fh::udp::sender tx;
     if (!tx.open(group, port, ip, request_port, why)) {
         std::fprintf(stderr, "feed_sender: %s\n", why.c_str());
@@ -118,6 +148,15 @@ int main(int argc, char** argv) {
             command c;
             if (n <= 0 || !read_command(b, static_cast<std::size_t>(n), c)) continue;
             stop = true;  // any command ends the run in progress
+            if (c.what == 'R' && n > 35) {
+                // The times resolved to messages, answered at once.
+                if (c.from_ns > 0) {
+                    c.first = first_at(*store, c.from_ns);
+                    c.last = c.to_ns > 0 ? first_at(*store, c.to_ns) - 1 : c.last;
+                }
+                const std::uint64_t span[2] = {c.first, c.last ? c.last : store->count()};
+                ::sendto(ctl, span, sizeof(span), 0, reinterpret_cast<sockaddr*>(&from), fl);
+            }
             std::unique_lock<std::mutex> l(mu);
             if (c.what == 'S') {
                 cv.wait(l, [&] { return counts_ready; });
@@ -147,9 +186,18 @@ int main(int argc, char** argv) {
         if (c.what == 'Q') break;
         store->set_session(c.session);
         fh::sender_config sc;
-        sc.packets_per_s = c.pace;
+        sc.packets_per_s = c.speed > 0 ? 0 : c.pace;
+        sc.speed = c.speed;
         sc.drop = c.drop;
+        sc.first = c.first;
         sc.last = c.last;
+        if (stamps) {
+            sc.stamp = [](void* ctx, std::uint64_t first, std::uint64_t count, std::int64_t due) {
+                auto* a = static_cast<fh::bench::stamp_array*>(ctx);
+                for (std::uint64_t q = first; q < first + count; ++q) a->put(q, due);
+            };
+            sc.stamp_ctx = stamps;
+        }
         sc.heartbeat_ns = 100'000'000;
         fh::mold_sender s(*store, tx, sc);
         s.run(stop);
