@@ -281,13 +281,14 @@ void live_and_replayed() {
     if (!p2->pub.open(pub_replay, why) || !join(*p2, again, pub_replay)) return;
     rec::reader rd;
     if (!rd.open(path, why)) return;
-    // The replay runs at full speed: its consumer reads alongside, as a live one would.
+    // The replay's consumer reads alongside, as a live one would.
     std::atomic<bool> replayed{false};
     std::thread reader_thread([&] {
         while (!replayed.load(std::memory_order_acquire)) again.drain();
         again.drain();
     });
-    const replay_result rr = replay(rd, *p2, small_seq());
+    // At the recorded pace: at full speed a sanitized consumer on CI's runner fell behind and was overrun (seen in CI).
+    const replay_result rr = replay(rd, *p2, small_seq(), true);
     replayed.store(true, std::memory_order_release);
     reader_thread.join();
     const std::uint64_t d1 = pub::digest_of(*bk), d2 = pub::digest_of(*bk2);
