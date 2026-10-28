@@ -34,3 +34,12 @@ runs = ["publish-dev-lnx01-20261027T145206Z.json", "publish-dev-lnx01-20261027T1
 [record]
 note = "009"
 runs = ["record-dev-lnx01-20261027T215846Z.json", "record-dev-lnx01-20261027T220521Z.json", "record-dev-lnx01-20261027T220652Z.json"]
+
+[e2e]
+note = "010"
+runs = ["e2e-dev-lnx01-20261027T234335Z.json", "e2e-dev-lnx01-20261028T124019Z.json", "e2e-dev-lnx01-20261028T125138Z.json",
+        "e2e-dev-lnx01-20261028T001509Z.json", "e2e-dev-lnx01-20261028T120644Z.json", "e2e-dev-lnx01-20261028T121803Z.json"]
+
+[throughput]
+note = "010"
+runs = ["throughput-dev-lnx01-20261027T235611Z.json", "throughput-dev-lnx01-20261028T130400Z.json", "throughput-dev-lnx01-20261028T131534Z.json"]

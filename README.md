@@ -105,5 +105,18 @@ The receive path with the recorder off and on: one thread over loopback, ns, ran
 <!-- /results -->
 
 <!-- results:e2e-summary -->
-End-to-end figures: not yet measured (design note 010).
+| Path | Case | Packet to published update p50 | p99 | p99.9 |
+|---|---|---|---|---|
+| loopback | 25k/s | 11.8 µs–13.2 µs | 26.4 µs–28.2 µs | 271.4 µs–326.1 µs |
+| loopback | the open, its own pace | 13.3 µs–14.5 µs | 37.3 µs–38.5 µs | 67.8 µs–69.4 µs |
+| the card, kernel busy polling | 25k/s | 24.8 µs–25.6 µs | 39.7 µs–40.8 µs | 384.5 µs–411.1 µs |
+| the card, kernel busy polling | the open, its own pace | 26.9 µs–28.1 µs | 52.3 µs–53.6 µs | 77.3 µs–79.0 µs |
+
+| Case | M messages/s | Seconds for the day |
+|---|---|---|
+| fast | 4.20–4.23 | 100.1–100.7 |
+| fast, published to one consumer | 2.52–2.58 | 164.0–168.2 |
+| reference | 1.01 | 417.5–421.0 |
+
+One way, open loop, from the packet's intended send time to a consumer process reading the update, recording on; and the whole day from a recording at full speed. ns, range over runs. The method and every pace: [RESULTS.md](RESULTS.md).
 <!-- /results -->
