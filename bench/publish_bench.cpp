@@ -33,6 +33,7 @@
 #include <cstdio>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <sys/mman.h>
@@ -84,7 +85,9 @@ void consumer_main(const std::string& name, int my_cpu, const volatile ticks* st
     fh::pub::consumer c;
     std::string why;
     summary res[2];
-    if (c.attach(name, why)) {
+    bool attached = false;
+    for (int i = 0; i < 12'000 && !(attached = c.attach(name, why)); ++i) std::this_thread::sleep_for(std::chrono::milliseconds(5));  // the producer builds first
+    if (attached) {
         for (int pass = 0; pass < 2; ++pass) {
             auto h = std::make_unique<hist>();
             std::uint64_t updates = 0, seen = 0;
@@ -162,6 +165,24 @@ int main(int argc, char** argv) {
         auto r = std::make_unique<case_result>();
         r->consumers = consumers < 0 ? 0 : consumers;
         r->name = consumers < 0 ? "no publisher" : consumers == 0 ? "table only" : std::to_string(consumers) + (consumers == 1 ? " consumer" : " consumers");
+        // Consumers forked first, before the book and publisher exist: forked after, the producer's first
+        // write to each of their pages is a copy-on-write fault, and each further fork shares them again
+        // (note 008, Review: found by note 010).
+        std::vector<pid_t> kids;
+        std::vector<int> pipes;
+        for (int k = 0; k < consumers; ++k) {
+            int fds[2];
+            if (::pipe(fds) != 0) return run.finish(false, "publish_bench");
+            const pid_t kid = ::fork();
+            if (kid == 0) {
+                ::close(fds[0]);
+                consumer_main(name, consumer_cpus[k], stamps, fds[1]);
+                ::_exit(0);
+            }
+            ::close(fds[1]);
+            kids.push_back(kid);
+            pipes.push_back(fds[0]);
+        }
         auto book = std::make_unique<fh::default_book>();
         if (consumers < 0) {
             quiet_sink sink;
@@ -180,21 +201,6 @@ int main(int argc, char** argv) {
             if (!p->pub.open(name, why)) {
                 std::fprintf(stderr, "publish_bench: %s\n", why.c_str());
                 return run.finish(false, "publish_bench");
-            }
-            std::vector<pid_t> kids;
-            std::vector<int> pipes;
-            for (int k = 0; k < consumers; ++k) {
-                int fds[2];
-                if (::pipe(fds) != 0) return run.finish(false, "publish_bench");
-                const pid_t kid = ::fork();
-                if (kid == 0) {
-                    ::close(fds[0]);
-                    consumer_main(name, consumer_cpus[k], stamps, fds[1]);
-                    ::_exit(0);
-                }
-                ::close(fds[1]);
-                kids.push_back(kid);
-                pipes.push_back(fds[0]);
             }
             // Every consumer joined (replay of the empty book done) before the clock starts.
             for (int live = 0; live < consumers;) {

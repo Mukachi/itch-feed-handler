@@ -151,13 +151,9 @@ int main(int argc, char** argv) {
         results.push_back(timed("fast", path, *h, expect));
     }
     {
-        auto b = std::make_unique<fh::default_book>();
-        auto p = std::make_unique<fh::published<>>(*b);
+        // The consumer forked first, before the book and publisher exist: forked after, the producer's
+        // first write to each of their pages is a copy-on-write fault (note 010, Review).
         const std::string name = "/itchfh-tp-" + std::to_string(::getpid());
-        if (!p->pub.open(name, why)) {
-            std::fprintf(stderr, "throughput_bench: %s\n", why.c_str());
-            return run.finish(false, "throughput_bench");
-        }
         int fds[2];
         if (::pipe(fds) != 0) return run.finish(false, "throughput_bench");
         const pid_t kid = ::fork();
@@ -166,7 +162,7 @@ int main(int argc, char** argv) {
             lfipc::bench::detail::pin_to(consumer_cpu);
             fh::pub::consumer c;
             std::string w;
-            for (int i = 0; i < 2000 && !c.attach(name, w); ++i) std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            for (int i = 0; i < 12'000 && !c.attach(name, w); ++i) std::this_thread::sleep_for(std::chrono::milliseconds(5));
             c.report_node();
             bool overrun = false;
             fh::pub::update u;
@@ -184,6 +180,12 @@ int main(int argc, char** argv) {
             ::_exit(0);
         }
         ::close(fds[1]);
+        auto b = std::make_unique<fh::default_book>();
+        auto p = std::make_unique<fh::published<>>(*b);
+        if (!p->pub.open(name, why)) {
+            std::fprintf(stderr, "throughput_bench: %s\n", why.c_str());
+            return run.finish(false, "throughput_bench");
+        }
         for (int i = 0; i < 20'000'000; ++i) {
             p->tick(0);
             int live = 0;

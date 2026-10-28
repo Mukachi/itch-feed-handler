@@ -101,7 +101,7 @@ void consumer_main(const std::string& name, int out) {
     std::string why;
     fh::bench::stamp_array* st = fh::bench::open_stamps(stamps_name, false, why);
     fh::pub::consumer c;
-    for (int i = 0; i < 2000 && !c.attach(name, why); ++i) std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    for (int i = 0; i < 12'000 && !c.attach(name, why); ++i) std::this_thread::sleep_for(std::chrono::milliseconds(5));  // the producer builds its book first
     r.attached = st && c.index() >= 0;
     if (r.attached) {
         c.report_node();
@@ -215,6 +215,18 @@ int main(int argc, char** argv) {
         r->speed = pl.speed;
         r->recording = pl.recording;
         const std::string name = "/itchfh-e2e-" + std::to_string(::getpid()) + "-" + std::to_string(k++);
+        // The consumer forked first, before this process builds anything it will write: forked after,
+        // every page the producer then first writes is copied (copy-on-write), ~3 us a page; the
+        // participant positions (L) at 03:07, each a new page, made a ~2 ms queue in every case (note 010, Review).
+        int fds[2];
+        if (::pipe(fds) != 0) return run.finish(false, "e2e_bench");
+        const pid_t kid = ::fork();
+        if (kid == 0) {
+            ::close(fds[0]);
+            consumer_main(name, fds[1]);
+            ::_exit(0);
+        }
+        ::close(fds[1]);
         fh::udp::receiver rx;
         fh::udp::receiver::options ro;
         ro.interface_ip = our_ip;
@@ -237,15 +249,6 @@ int main(int argc, char** argv) {
             std::fprintf(stderr, "e2e_bench: %s\n", why.c_str());
             return run.finish(false, "e2e_bench");
         }
-        int fds[2];
-        if (::pipe(fds) != 0) return run.finish(false, "e2e_bench");
-        const pid_t kid = ::fork();
-        if (kid == 0) {
-            ::close(fds[0]);
-            consumer_main(name, fds[1]);
-            ::_exit(0);
-        }
-        ::close(fds[1]);
         // The consumer joined (its replay of the empty book done) before anything is sent.
         for (int i = 0; i < 20'000'000; ++i) {
             p->tick(fh::monotonic_ns());
