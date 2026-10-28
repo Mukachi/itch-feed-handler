@@ -14,10 +14,10 @@ HP ProLiant DL380 Gen9, BIOS P89 (08/29/2024); 2 × Intel(R) Xeon(R) CPU E5-2699
 | sequencer (note 005) | 6 | 2026-10-26 20:01 UTC | 695b3bf | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | snapshot (note 006) | 3 | 2026-10-26 21:22 UTC | 92bd97d | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | feed (note 007) | 9 | 2026-10-27 00:40 UTC | ee4adfe | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
-| publish (note 008) | 6 | 2026-10-27 14:52 UTC | 08acac7 | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
+| publish (note 008) | 3 | 2026-10-28 16:25 UTC | 1f39862 | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | record (note 009) | 3 | 2026-10-27 21:58 UTC | cc7ea58 | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
-| e2e (note 010) | 6 | 2026-10-27 23:43 UTC | 0221b4d | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
-| throughput (note 010) | 3 | 2026-10-27 23:56 UTC | 0221b4d | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
+| e2e (note 010) | 6 | 2026-10-28 15:38 UTC | 1f39862 | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
+| throughput (note 010) | 3 | 2026-10-28 16:32 UTC | 1f39862 | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 
 Every run met note 004's bench-mode conditions (each file's `environment.bench_mode`, checked before use) and was built clean; compiler and flags are in each file's `environment.build`. Ranges are min–max over a set's runs.
 
@@ -373,15 +373,15 @@ The first 50,000,000 messages of the sample day (about 1.16 million MoldUDP64 pa
 
 ## Publication (note 008)
 
-The first 50,000,000 messages of the sample day `01302020.NASDAQ_ITCH50.gz`, decoded into memory first, through a fresh default book and handler on one pinned CPU (CPU 2): with a sink that does nothing (no publisher), with the publisher and its state table only, and with 1, 2 and 4 consumers, each a process of its own on CPUs 3, 4, 5, 6 (separate cores, the same node) reading its ring. Each message's handling timed between start() and stop(), unsubtracted, the first 10,000 discarded. The publisher's cost is read from the absolute figures, not as a difference: with no publisher the p50 spread from run to run (mostly 132–138 ns, once 149 and once 178, the same binary and data), while the cases with the publisher stayed within a few ns (208 with the table only in every run), so a difference would carry the baseline's spread (note 008, Review). Write to read: the publishing thread stamps the cycle counter for each message's sequence number before handling it; a consumer subtracts it on reading the update (so it includes the handling), paced at 1 million messages a second over 2,000,000 messages; consumers are pushed to in order, so the first and the last are shown. No consumer was overrun. 6 runs; ranges over them.
+The first 50,000,000 messages of the sample day `01302020.NASDAQ_ITCH50.gz`, decoded into memory first, through a fresh default book and handler on one pinned CPU (CPU 2): with a sink that does nothing (no publisher), with the publisher and its state table only, and with 1, 2 and 4 consumers, each a process of its own on CPUs 3, 4, 5, 6 (separate cores, the same node) reading its ring. Each message's handling timed between start() and stop(), unsubtracted, the first 10,000 discarded. Each consumer is forked before the producer builds anything, so none of its pages are shared copy-on-write (they were in the first published set, which inflated it: note 008, Review). The publisher's cost is read from the absolute figures: with no publisher the p50 has moved between builds of the same code (132–178 ns in an earlier build, the same in every run here), the table adding ~72 ns over it in both (note 008, Review). Write to read: the publishing thread stamps the cycle counter for each message's sequence number before handling it; a consumer subtracts it on reading the update (so it includes the handling), paced at 1 million messages a second over 2,000,000 messages; consumers are pushed to in order, so the first and the last are shown. No consumer was overrun. 3 runs; ranges over them.
 
 | Case | M messages/s | p50 | p99 | p99.9 | Write to read p50, first consumer | p99 | Write to read p50, last consumer |
 |---|---|---|---|---|---|---|---|
-| no publisher | 4.53–5.82 | 132–178 | 519–616 | 762–871 | – | – | – |
-| table only | 3.73–3.75 | 208 | 670–679 | 952–964 | – | – | – |
-| 1 consumer | 3.04–3.15 | 229–231 | 830–841 | 4,245–4,470 | 273–298 | 549–587 | – |
-| 2 consumers | 2.28–2.61 | 293–354 | 941–1,032 | 4,448–4,630 | 281–299 | 594–622 | 337–368 |
-| 4 consumers | 1.67–1.90 | 425–499 | 1,172–1,292 | 4,805–5,031 | 299–372 | 692–800 | 475–532 |
+| no publisher | 4.31–4.32 | 197 | 628–629 | 892–894 | – | – | – |
+| table only | 3.08–3.10 | 269–270 | 764–768 | 1,055–1,061 | – | – | – |
+| 1 consumer | 2.79–3.34 | 229–291 | 699–811 | 997–1,114 | 281–316 | 556–670 | – |
+| 2 consumers | 2.35–2.43 | 350–364 | 894–913 | 1,194–1,212 | 322–377 | 686–741 | 349–391 |
+| 4 consumers | 1.77–1.90 | 453–489 | 1,086–1,145 | 1,394–1,456 | 340–534 | 756–959 | 372–471 |
 
 ## Recording (note 009)
 
@@ -402,31 +402,31 @@ The feed, recording off and on: the first 50,000,000 messages of the sample day 
 
 ## Packet to published update (note 010)
 
-One way, open loop: from the time our sender meant to send a packet (its schedule, not when it got to it, so a late sender or a backed-up receiver shows here) to the time a consumer, its own process on CPU 3 (the publisher's node), reads the first update one of its messages caused. The sender writes each message's intended time (CLOCK_MONOTONIC) into shared memory before sending; the consumer subtracts it on reading. On CPU 2, the program's components: one thread reading a datagram a call, the default book and handler, the publisher, the recorder on or off (its writer on CPU 1). A packet carries about 43 messages handled one after another, so a message later in its packet waits for those before it: that is in these figures. Fixed paces over the first 50,000,000 messages; the open, five minutes from 09:29:30 at the day's own pace. Every message handled once, no consumer overrun or on another node. The measurement's own cost: the clock pair 17 ns, a stamp write 16 ns and a clock read 35 ns, each with the pair (p50, the first run). The first 10,000 of each case discarded. Ranges over runs.
+One way, open loop: from the time our sender meant to send a packet (its schedule, not when it got to it, so a late sender or a backed-up receiver shows here) to the time a consumer, its own process on CPU 3 (the publisher's node), reads the first update one of its messages caused. The sender writes each message's intended time (CLOCK_MONOTONIC) into shared memory before sending; the consumer subtracts it on reading. On CPU 2, the program's components: one thread reading a datagram a call, the default book and handler, the publisher, the recorder on or off (its writer on CPU 1). A packet carries about 43 messages handled one after another, so a message later in its packet waits for those before it: that is in these figures. Fixed paces over the first 50,000,000 messages; the open, five minutes from 09:29:30 at the day's own pace. Every message handled once, no consumer overrun or on another node. The measurement's own cost: the clock pair 16 ns, a stamp write 16 ns and a clock read 35 ns, each with the pair (p50, the first run). The first 10,000 of each case discarded. Ranges over runs.
 
 ### Over loopback (3 runs)
 
 | Case | Recording | Messages | p50 | p99 | p99.9 | max | Sender late, max | Kernel drops |
 |---|---|---|---|---|---|---|---|---|
-| 10k/s | off | 50,000,000 | 11.2 µs–12.3 µs | 23.7 µs–24.8 µs | 36.1 µs–38.1 µs | 1,745.2 µs–2,061.5 µs | 2.8–1,018.3 µs | 0 |
-| 10k/s | on | 50,000,000 | 11.8 µs–12.8 µs | 25.4 µs–25.7 µs | 37.8 µs–39.2 µs | 1,878.5 µs–1,956.4 µs | 9.3–19.3 µs | 0 |
-| 25k/s | off | 50,000,000 | 11.3 µs–12.2 µs | 25.0 µs–25.5 µs | 110.3 µs–117.0 µs | 7,348.4 µs–7,515.3 µs | 3.4–57.1 µs | 0 |
-| 25k/s | on | 50,000,000 | 11.8 µs–13.2 µs | 26.4 µs–28.2 µs | 271.4 µs–326.1 µs | 8,300.9 µs–8,705.0 µs | 4.0–70.3 µs | 0 |
-| 50k/s | off | 50,000,000 | 11.7 µs–13.0 µs | 2,050.0 µs–8,667.1 µs | 12,550.1 µs–12,927.0 µs | 20,549.9 µs–20,898.3 µs | 6.9–88.4 µs | 0 |
-| 50k/s | on | 50,000,000 | 12.8 µs–13.8 µs | 22,151.2 µs–23,756.8 µs | 23,756.8 µs–25,690.1 µs | 24,054.4 µs–26,094.2 µs | 16.5 µs–92.5 µs | 0 |
-| the open, its own pace | on | 9,961,002 | 13.3 µs–14.5 µs | 37.3 µs–38.5 µs | 67.8 µs–69.4 µs | 1,881.9 µs–1,974.3 µs | 74.8 µs–84.3 µs | 0 |
+| 10k/s | off | 50,000,000 | 10.9 µs–11.0 µs | 20.5 µs–20.6 µs | 25.3 µs–25.6 µs | 40.5 µs–43.7 µs | 3.2–19.1 µs | 0 |
+| 10k/s | on | 50,000,000 | 11.3 µs–11.4 µs | 21.3 µs–21.4 µs | 26.1 µs–26.5 µs | 64.7 µs–78.7 µs | 3,279–9,938 | 0 |
+| 25k/s | off | 50,000,000 | 10.8 µs–11.1 µs | 20.3 µs–20.7 µs | 25.4 µs–25.8 µs | 5,599.0 µs–5,635.3 µs | 3.9–17.9 µs | 0 |
+| 25k/s | on | 50,000,000 | 11.3 µs–11.7 µs | 21.4 µs–22.0 µs | 26.7 µs–27.3 µs | 5,774.1 µs–5,962.9 µs | 4.2–11.4 µs | 0 |
+| 50k/s | off | 50,000,000 | 10.8 µs–10.9 µs | 20.9 µs–21.3 µs | 1,382.4 µs–1,660.9 µs | 11,211.6 µs–11,312.0 µs | 6.6–19.1 µs | 0 |
+| 50k/s | on | 50,000,000 | 11.4 µs–11.6 µs | 24.1 µs–25.5 µs | 1,974.3 µs–2,576.4 µs | 11,302.1 µs–11,496.2 µs | 6,398–8,217 | 0 |
+| the open, its own pace | on | 9,961,002 | 11.7 µs–12.4 µs | 23.2 µs–24.3 µs | 34.7 µs–36.7 µs | 437.0 µs–467.4 µs | 70.0 µs–76.0 µs | 0 |
 
 ### Over the card, kernel busy polling (3 runs)
 
 | Case | Recording | Messages | p50 | p99 | p99.9 | max | Sender late, max | Kernel drops |
 |---|---|---|---|---|---|---|---|---|
-| 10k/s | off | 50,000,000 | 24.1 µs–24.9 µs | 37.2 µs–38.1 µs | 49.6 µs–50.2 µs | 1,783.3 µs–2,105.5 µs | 4.1–19.5 µs | 0 |
-| 10k/s | on | 50,000,000 | 24.8 µs–25.4 µs | 38.7 µs–39.3 µs | 51.7 µs–52.2 µs | 1,957.1 µs–2,046.6 µs | 3.7–11.8 µs | 0 |
-| 25k/s | off | 50,000,000 | 24.4 µs–25.0 µs | 38.3 µs–39.2 µs | 146.2 µs–170.8 µs | 7,602.8 µs–7,793.8 µs | 3.8–10.1 µs | 0 |
-| 25k/s | on | 50,000,000 | 24.8 µs–25.6 µs | 39.7 µs–40.8 µs | 384.5 µs–411.1 µs | 8,923.0 µs–9,385.4 µs | 3.7–17.0 µs | 0 |
-| 50k/s | off | 50,000,000 | 26.1 µs–29.0 µs | 4,997.1 µs–22,380.5 µs | 13,090.8 µs–23,789.6 µs | 21,300.5 µs–24,213.1 µs | 6.7–17.8 µs | 0 |
-| 50k/s | on | 50,000,000 | 29.5 µs–33.5 µs | 40,566.8 µs–74,711.0 µs | 44,957.7 µs–75,759.6 µs | 45,288.4 µs–76,344.6 µs | 16.1 µs–123.3 µs | 0–5,952 |
-| the open, its own pace | on | 9,961,002 | 26.9 µs–28.1 µs | 52.3 µs–53.6 µs | 77.3 µs–79.0 µs | 1,930.4 µs–1,954.9 µs | 63.4 µs–76.3 µs | 0 |
+| 10k/s | off | 50,000,000 | 23.6 µs–23.7 µs | 33.0 µs–33.3 µs | 35.5 µs–35.8 µs | 50.8 µs–70.4 µs | 13.9 µs–18.8 µs | 0 |
+| 10k/s | on | 50,000,000 | 24.1 µs–24.3 µs | 34.1 µs–34.4 µs | 36.9 µs–37.3 µs | 58.7 µs–63.4 µs | 3.6–17.4 µs | 0 |
+| 25k/s | off | 50,000,000 | 23.6 µs–23.8 µs | 33.2 µs–33.5 µs | 36.9 µs–37.3 µs | 5,733.1 µs–5,797.7 µs | 2,902–8,136 | 0 |
+| 25k/s | on | 50,000,000 | 24.1 µs–24.5 µs | 34.2 µs–35.1 µs | 38.1 µs–39.0 µs | 5,890.6 µs–6,008.7 µs | 3.2–20.1 µs | 0 |
+| 50k/s | off | 50,000,000 | 23.6 µs | 42.1 µs–42.8 µs | 2,281.5 µs–2,441.2 µs | 11,400.9 µs–11,447.4 µs | 3.8–15.5 µs | 0 |
+| 50k/s | on | 50,000,000 | 25.9 µs–26.4 µs | 55.0 µs–58.6 µs | 2,588.7 µs–2,904.1 µs | 11,311.6 µs–11,597.8 µs | 7.4–14.4 µs | 0 |
+| the open, its own pace | on | 9,961,002 | 25.1 µs–25.4 µs | 38.2 µs–39.2 µs | 52.4 µs–54.5 µs | 469.2 µs–504.5 µs | 64.5 µs–72.2 µs | 0 |
 
 ## Throughput over the day (note 010)
 
@@ -434,6 +434,6 @@ The whole sample day `01302020.NASDAQ_ITCH50.gz` (423,285,709 messages) from a r
 
 | Case | M messages/s | Seconds for the day |
 |---|---|---|
-| fast | 4.20–4.23 | 100.1–100.7 |
-| fast, published to one consumer | 2.52–2.58 | 164.0–168.2 |
-| reference | 1.01 | 417.5–421.0 |
+| fast | 4.23 | 100.0–100.2 |
+| fast, published to one consumer | 2.57–2.62 | 161.3–164.6 |
+| reference | 1.01–1.02 | 413.9–417.7 |

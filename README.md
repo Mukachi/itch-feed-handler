@@ -84,11 +84,11 @@ The first 50,000,000 messages of the sample day over MoldUDP64 multicast from ou
 <!-- results:publish-summary -->
 | Case | M messages/s | p50 | p99 | p99.9 | Write to read p50, first consumer | p99 | Write to read p50, last consumer |
 |---|---|---|---|---|---|---|---|
-| no publisher | 4.53–5.82 | 132–178 | 519–616 | 762–871 | – | – | – |
-| table only | 3.73–3.75 | 208 | 670–679 | 952–964 | – | – | – |
-| 1 consumer | 3.04–3.15 | 229–231 | 830–841 | 4,245–4,470 | 273–298 | 549–587 | – |
-| 2 consumers | 2.28–2.61 | 293–354 | 941–1,032 | 4,448–4,630 | 281–299 | 594–622 | 337–368 |
-| 4 consumers | 1.67–1.90 | 425–499 | 1,172–1,292 | 4,805–5,031 | 299–372 | 692–800 | 475–532 |
+| no publisher | 4.31–4.32 | 197 | 628–629 | 892–894 | – | – | – |
+| table only | 3.08–3.10 | 269–270 | 764–768 | 1,055–1,061 | – | – | – |
+| 1 consumer | 2.79–3.34 | 229–291 | 699–811 | 997–1,114 | 281–316 | 556–670 | – |
+| 2 consumers | 2.35–2.43 | 350–364 | 894–913 | 1,194–1,212 | 322–377 | 686–741 | 349–391 |
+| 4 consumers | 1.77–1.90 | 453–489 | 1,086–1,145 | 1,394–1,456 | 340–534 | 756–959 | 372–471 |
 
 The sample day's first 50,000,000 messages through the handler and its publisher on one CPU, consumers in processes of their own; ns, range over runs. The method: [RESULTS.md](RESULTS.md).
 <!-- /results -->
@@ -107,16 +107,16 @@ The receive path with the recorder off and on: one thread over loopback, ns, ran
 <!-- results:e2e-summary -->
 | Path | Case | Packet to published update p50 | p99 | p99.9 |
 |---|---|---|---|---|
-| loopback | 25k/s | 11.8 µs–13.2 µs | 26.4 µs–28.2 µs | 271.4 µs–326.1 µs |
-| loopback | the open, its own pace | 13.3 µs–14.5 µs | 37.3 µs–38.5 µs | 67.8 µs–69.4 µs |
-| the card, kernel busy polling | 25k/s | 24.8 µs–25.6 µs | 39.7 µs–40.8 µs | 384.5 µs–411.1 µs |
-| the card, kernel busy polling | the open, its own pace | 26.9 µs–28.1 µs | 52.3 µs–53.6 µs | 77.3 µs–79.0 µs |
+| loopback | 25k/s | 11.3 µs–11.7 µs | 21.4 µs–22.0 µs | 26.7 µs–27.3 µs |
+| loopback | the open, its own pace | 11.7 µs–12.4 µs | 23.2 µs–24.3 µs | 34.7 µs–36.7 µs |
+| the card, kernel busy polling | 25k/s | 24.1 µs–24.5 µs | 34.2 µs–35.1 µs | 38.1 µs–39.0 µs |
+| the card, kernel busy polling | the open, its own pace | 25.1 µs–25.4 µs | 38.2 µs–39.2 µs | 52.4 µs–54.5 µs |
 
 | Case | M messages/s | Seconds for the day |
 |---|---|---|
-| fast | 4.20–4.23 | 100.1–100.7 |
-| fast, published to one consumer | 2.52–2.58 | 164.0–168.2 |
-| reference | 1.01 | 417.5–421.0 |
+| fast | 4.23 | 100.0–100.2 |
+| fast, published to one consumer | 2.57–2.62 | 161.3–164.6 |
+| reference | 1.01–1.02 | 413.9–417.7 |
 
 One way, open loop, from the packet's intended send time to a consumer process reading the update, recording on; and the whole day from a recording at full speed. ns, range over runs. The method and every pace: [RESULTS.md](RESULTS.md).
 <!-- /results -->
