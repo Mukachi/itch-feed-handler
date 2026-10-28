@@ -200,7 +200,7 @@ The repo as a whole, checked as the notes reach Measured:
 
 - [x] Shep: empty GitHub repo `Mukachi/itch-feed-handler` (private)
 - [x] Read the terms of Nasdaq's sample data; record what they allow here (Review, 2026-10-25)
-- [ ] Notes 002–010, one at a time, each agreed before its code
+- [x] Notes 002–010, one at a time, each agreed before its code
 
 ## Review
 
