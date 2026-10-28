@@ -15,10 +15,13 @@ Only Spec and Review are mandatory. Any section can be one line.
 
 | # | Component | Status |
 |---|---|---|
-| [001](design/001-scope.md) | Scope and plan | Agreed |
+| [001](design/001-scope.md) | Scope and plan | Measured |
 | [002](design/002-order-book.md) | Order book | Measured |
 | [003](design/003-events-directory-status.md) | Event handler, instrument directory, trades and market status | Measured |
 | [004](design/004-decoder.md) | ITCH decoder | Measured |
 | [005](design/005-sequencing-recovery.md) | Sequencing and recovery | Measured |
 | [006](design/006-snapshots-replay.md) | Snapshots and replay | Measured |
-| [007](design/007-receiver-framer.md) | Receiver and framer | Agreed |
+| [007](design/007-receiver-framer.md) | Receiver and framer | Measured |
+| [008](design/008-publication.md) | Publication | Measured |
+| [009](design/009-recording-monitoring.md) | Recording and monitoring | Measured |
+| [010](design/010-measurement.md) | Measurement | Measured |
