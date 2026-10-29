@@ -1,6 +1,6 @@
 # 011 — Recovery from a snapshot in the program
 
-**Status:** Draft · **Updated:** 2026-10-29
+**Status:** Agreed · **Updated:** 2026-10-29
 
 ## Proposal
 
@@ -144,3 +144,4 @@ sequenceDiagram
 | Date | Stage | Finding |
 |---|---|---|
 | 2026-10-29 | Draft | Written for review from the record. Found while reading it: note 006's client decodes with C (`decode_simd_unpadded`), not the live path's B, against its D4; its apply figure leaves out building the fresh book; the server builds on demand (~1.2 s at the peak) while the feed keeps arriving, so the hold must cover a recovery (64 MB holds ~32k packets, a recovery at the peak needs ~43k); and no GLIMPSE server exists over a socket yet |
+| 2026-10-29 | Agreed | Approved by Shep, every decision as proposed (option A each): D1 recover whenever `lost`, and `join = snapshot` for a late start; D2 the server a thread in `feed_sender` following what has been sent, SoupBinTCP on 26403; D3 a standby book and handler, swapped in, the old rebuilt on a housekeeping thread; D4 the spin in 64 KB slices between socket reads; D5 `hold_mb` 256; D6 the client on `decode` (B), note 006 amended and its set re-measured; D7 failures leave the old books, retry after a second, counted; D8 tests in process, through the programs, TSan; D9 recovery at the peak, three parts, both paths |

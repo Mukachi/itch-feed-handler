@@ -25,4 +25,4 @@ Only Spec and Review are mandatory. Any section can be one line.
 | [008](design/008-publication.md) | Publication | Measured |
 | [009](design/009-recording-monitoring.md) | Recording and monitoring | Measured |
 | [010](design/010-measurement.md) | Measurement | Measured |
-| [011](design/011-snapshot-recovery.md) | Recovery from a snapshot in the program | Draft |
+| [011](design/011-snapshot-recovery.md) | Recovery from a snapshot in the program | Agreed |
