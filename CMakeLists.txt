@@ -54,7 +54,7 @@ target_compile_definitions(lfipc INTERFACE ITCHFH_LFIPC_COMMIT="${ITCHFH_LFIPC_C
 add_dependencies(lfipc build_info)
 
 # Tests: plain executables under CTest. Each one added with its component.
-set(ITCHFH_TESTS reference_book_test book_test reference_decoder_test handler_test decoder_test sequencer_test snapshot_test feed_test publish_test record_test)
+set(ITCHFH_TESTS reference_book_test book_test reference_decoder_test handler_test decoder_test sequencer_test snapshot_test feed_test publish_test record_test recovery_test)
 foreach(t ${ITCHFH_TESTS})
   add_executable(${t} tests/${t}.cpp)
   target_link_libraries(${t} PRIVATE itchfh lfipc Threads::Threads)
@@ -115,6 +115,15 @@ add_dependencies(record_day_test feed_sender itchfh_program)
 add_test(NAME record_day_test COMMAND record_day_test)
 set_tests_properties(record_day_test PROPERTIES LABELS data TIMEOUT 14400)
 
+# Note 011's S1 through the programs: a loss at the peak recovered from a snapshot (label data).
+add_executable(recovery_day_test tests/recovery_day_test.cpp)
+target_link_libraries(recovery_day_test PRIVATE itchfh lfipc Threads::Threads)
+target_compile_definitions(recovery_day_test PRIVATE ITCHFH_DATA_DIR="${CMAKE_SOURCE_DIR}/data" ITCHFH_RECORD_DIR="${CMAKE_BINARY_DIR}"
+                                                     ITCHFH_SENDER="$<TARGET_FILE:feed_sender>" ITCHFH_PROGRAM="$<TARGET_FILE:itchfh_program>")
+add_dependencies(recovery_day_test feed_sender itchfh_program)
+add_test(NAME recovery_day_test COMMAND recovery_day_test)
+set_tests_properties(recovery_day_test PROPERTIES LABELS data TIMEOUT 14400)
+
 # The benchmark (note 002, S5): writes into results/ only in bench mode.
 add_executable(book_bench bench/book_bench.cpp)
 target_link_libraries(book_bench PRIVATE itchfh lfipc Threads::Threads)
@@ -151,6 +160,9 @@ target_compile_definitions(throughput_bench PRIVATE LFIPC_RESULTS_DIR="${CMAKE_S
 add_executable(e2e_bench bench/e2e_bench.cpp)
 target_link_libraries(e2e_bench PRIVATE itchfh lfipc Threads::Threads)
 target_compile_definitions(e2e_bench PRIVATE LFIPC_RESULTS_DIR="${CMAKE_SOURCE_DIR}/results" ITCHFH_RECORD_DIR="${CMAKE_BINARY_DIR}")
+add_executable(recovery_bench bench/recovery_bench.cpp)
+target_link_libraries(recovery_bench PRIVATE itchfh lfipc Threads::Threads)
+target_compile_definitions(recovery_bench PRIVATE LFIPC_RESULTS_DIR="${CMAKE_SOURCE_DIR}/results")
 add_executable(record_bench bench/record_bench.cpp)
 target_link_libraries(record_bench PRIVATE itchfh lfipc Threads::Threads)
 target_compile_definitions(record_bench PRIVATE LFIPC_RESULTS_DIR="${CMAKE_SOURCE_DIR}/results" ITCHFH_RECORD_DIR="${CMAKE_BINARY_DIR}")

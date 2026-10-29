@@ -31,6 +31,8 @@ public:
     static constexpr std::uint64_t replay_budget = 4096;  // updates a tick, at most
 
     explicit publisher(const Book& b) : book_(&b), mirror_(std::make_unique<std::uint64_t[][7]>(pub::instruments)) {}
+    // Its book given later by rebind() (note 011: the recovery owns both books), before anything is fed.
+    publisher() : book_(nullptr), mirror_(std::make_unique<std::uint64_t[][7]>(pub::instruments)) {}
 
     // Creates the table and every consumer's ring; false, with `why`, if not.
     bool open(const std::string& name, std::string& why) {
@@ -87,17 +89,36 @@ public:
         }
     }
     // While a snapshot is applied (note 006 replays its spin through the
-    // handler) nothing goes to the rings; the table still follows.
+    // handler) nothing goes to the rings, and the table is left as it was
+    // (note 011: a spin that fails part way must leave no trace; the table
+    // used to follow it).
     void mute(bool on) { muted_ = on; }
-    // D5: after a snapshot, every consumer gets the rebuilt books.
+    // D5: after a snapshot, the table is rebuilt from the rebuilt book (an
+    // instrument the spin no longer has would otherwise keep its old entry:
+    // note 011), and every consumer gets the rebuilt books.
     void restored() {
         muted_ = false;
+        for (std::uint32_t i = 0; i < pub::instruments; ++i) {
+            const auto l = static_cast<std::uint16_t>(i);
+            const auto bb = book_->best(l, side::bid), ba = book_->best(l, side::ask);
+            std::uint64_t* m = mirror_[l];
+            m[0] = (bb ? bb->price : 0) | static_cast<std::uint64_t>(bb ? bb->orders : 0) << 32;
+            m[1] = bb ? bb->shares : 0;
+            m[2] = (ba ? ba->price : 0) | static_cast<std::uint64_t>(ba ? ba->orders : 0) << 32;
+            m[3] = ba ? ba->shares : 0;
+            // No last trade since the snapshot (GLIMPSE carries none); the trading state as restored.
+            m[4] = status_ ? static_cast<std::uint64_t>(static_cast<unsigned char>(status_->of(l).trading_state)) << 32 : 0;
+            m[5] = 0;
+            last_rel_[l] = reliability(l);
+            write_table(l);
+        }
         for (int c = 0; c < pub::max_consumers; ++c)
             if (local_[c] == pub::slot_live || local_[c] == pub::slot_replaying) start_replay(c);
     }
 
     // ---- the handler's sink (note 003)
     void book(const applied& a) {
+        if (muted_) return;
         const std::uint8_t r = reliability(a.locate);
         if (a.bad != bad_event::none) {
             if (r != last_rel_[a.locate]) {
@@ -125,6 +146,7 @@ public:
         write_table(a.locate);
     }
     void trade(const trade_report& t) {
+        if (muted_) return;
         pub::update u = head(pub::kind::trade, t.locate);
         u.trade = {t.price, t.kind, t.shares, t.match};
         push(u, true);
@@ -139,6 +161,7 @@ public:
         push(u, true);
     }
     void status(std::uint16_t l, status_field f) {
+        if (muted_) return;
         pub::update u = head(pub::kind::status, l);
         u.field = f;
         const instrument_status& st = status_->of(l);

@@ -25,7 +25,11 @@ also call kill, and read errno after it (its once-a-second check that each
 consumer's process runs). Recording and monitoring (note 009): a feed pass with
 the recorder attached (as the receive path, the socket's calls allowed, and,
 the pass running the publisher's tick, its kill), the recorder's own call, and
-the monitoring refresh: memory functions alone.
+the monitoring refresh: memory functions alone. Recovery (note 011, S6): the
+program's pass on the handler sharing its publisher, as the recorded pass; a
+slice of a snapshot, which may also call recv (reading the snapshot's socket,
+errno after it), close (once, ending the spin) and clock_gettime (timing the
+recovery), and decodes with B; and its monitoring refresh: memory alone.
 """
 import re
 import subprocess
@@ -37,12 +41,16 @@ SUBJECTS = ["itchfh_apply_ref_hash_levels_sorted", "itchfh_apply_ref_hash_levels
             "itchfh_decode_simd_unpadded", "itchfh_sequence_packet", "itchfh_sequence_tick",
             "itchfh_feed_one_poll", "itchfh_feed_two_receive", "itchfh_feed_two_handle",
             "itchfh_publish_message", "itchfh_publish_feed", "itchfh_publish_tick",
-            "itchfh_record_poll", "itchfh_record_datagram", "itchfh_monitor_refresh"]
-INDIRECT_ALLOWED = {"itchfh_decode_table", "itchfh_feed_one_poll", "itchfh_feed_two_handle", "itchfh_record_poll"}  # B, and the feed's passes that decode with it
+            "itchfh_record_poll", "itchfh_record_datagram", "itchfh_monitor_refresh",
+            "itchfh_program_poll", "itchfh_recovery_slice", "itchfh_recovery_refresh"]
+INDIRECT_ALLOWED = {"itchfh_decode_table", "itchfh_feed_one_poll", "itchfh_feed_two_handle", "itchfh_record_poll",
+                    "itchfh_program_poll", "itchfh_recovery_slice"}  # B, and the passes that decode with it
 # __memcpy_chk, __memmove_chk: with a bounds check (_FORTIFY_SOURCE, Ubuntu's default).
 MEMORY = {"memcpy@plt", "__memcpy_chk@plt", "memmove@plt", "__memmove_chk@plt", "memcmp@plt", "__stack_chk_fail@plt",
           "memset@plt", "__memset_chk@plt"}
 SOCKET = {"recvmmsg@plt", "recvmsg@plt", "sendto@plt", "clock_gettime@plt"}
+SNAPSHOT = {"recv@plt", "close@plt", "clock_gettime@plt", "__errno_location@plt"}  # a slice of a snapshot (note 011)
+FEED = {"itchfh_record_poll", "itchfh_program_poll"}  # passes that also run the publisher's tick
 
 failures = 0
 
@@ -96,7 +104,7 @@ for subject in SUBJECTS:
         bad += [f"{f}: {m}" for m, _ in funcs[f] if m in ("syscall", "sysenter", "int")]
         for t in direct:
             if t.endswith("@plt"):
-                if t not in MEMORY and not ((subject.startswith("itchfh_feed") or subject == "itchfh_record_poll") and t in SOCKET) and not (subject in ("itchfh_publish_tick", "itchfh_record_poll") and t in ("kill@plt", "__errno_location@plt")):
+                if t not in MEMORY and not ((subject.startswith("itchfh_feed") or subject in FEED) and t in SOCKET) and not (subject in ("itchfh_publish_tick",) + tuple(FEED) and t in ("kill@plt", "__errno_location@plt")) and not (subject == "itchfh_recovery_slice" and t in SNAPSHOT | SOCKET):
                     bad.append(f"{f}: calls {t}")
             elif t in funcs and t != f:
                 todo.append(t)
@@ -105,9 +113,10 @@ for subject in SUBJECTS:
              else "S5 (note 005)" if subject.startswith("itchfh_sequence") else "S5 (note 007)" if subject.startswith("itchfh_feed")
              else "S5 (note 008)" if subject.startswith("itchfh_publish")
              else "S5 (note 009)" if subject.startswith("itchfh_record") or subject.startswith("itchfh_monitor")
+             else "S6 (note 011)" if subject.startswith("itchfh_program") or subject.startswith("itchfh_recovery")
              else "S4")
     check(not bad, f"{label} {subject}: {len(seen)} functions, {size} instructions, calls only memory functions "
-                   f"and the stack protector" + (", and the socket's calls" if subject.startswith("itchfh_feed") else "") + (f": found {bad[:5]}" if bad else ""))
+                   f"and the stack protector" + (", and the socket's calls" if subject.startswith("itchfh_feed") or subject in FEED or subject == "itchfh_recovery_slice" else "") + (f": found {bad[:5]}" if bad else ""))
 
 print("FAILED" if failures else "all passed")
 sys.exit(1 if failures else 0)

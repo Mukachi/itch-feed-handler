@@ -12,6 +12,7 @@
 // Design: docs/design/006-snapshots-replay.md
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -90,34 +91,63 @@ inline bool read_end_of_snapshot(const unsigned char* p, std::size_t n, std::uin
 }
 
 // The client's side of a stream: bytes in, in any pieces; for each whole
-// packet, f(type, body, length). Debug packets are skipped here.
+// packet, f(type, body, length). Debug packets are skipped here. Packets are
+// read where they lie; only a packet split across pieces is copied, into a
+// buffer of the largest packet's size (note 011: nothing allocated).
 class reader {
 public:
     template <class F>
     void feed(const unsigned char* p, std::size_t n, F&& f) {
-        buf_.insert(buf_.end(), p, p + n);
-        std::size_t at = 0;
-        while (buf_.size() - at >= 2) {
-            const std::size_t len = std::size_t{buf_[at]} << 8 | buf_[at + 1];
-            if (len == 0 || buf_.size() - at - 2 < len) {
-                if (len == 0) {
-                    ++malformed_;
-                    at += 2;
-                    continue;
-                }
-                break;
+        if (held_ > 0) {  // a packet begun in an earlier piece: completed first
+            if (held_ < 2) {
+                const std::size_t k = std::min<std::size_t>(2 - held_, n);
+                std::memcpy(tail_ + held_, p, k);
+                held_ += k, p += k, n -= k;
+                if (held_ < 2) return;
             }
-            const char type = static_cast<char>(buf_[at + 2]);
-            if (type != '+') f(type, buf_.data() + at + 3, len - 1);
-            at += 2 + len;
+            const std::size_t len = std::size_t{tail_[0]} << 8 | tail_[1];
+            if (len == 0) {
+                ++malformed_;
+                held_ = 0;
+            } else {
+                const std::size_t k = std::min(2 + len - held_, n);
+                std::memcpy(tail_ + held_, p, k);
+                held_ += k, p += k, n -= k;
+                if (held_ < 2 + len) return;
+                one(tail_, len, f);
+                held_ = 0;
+            }
         }
-        buf_.erase(buf_.begin(), buf_.begin() + static_cast<std::ptrdiff_t>(at));
+        while (n >= 2) {
+            const std::size_t len = std::size_t{p[0]} << 8 | p[1];
+            if (len == 0) {
+                ++malformed_;
+                p += 2, n -= 2;
+                continue;
+            }
+            if (n < 2 + len) break;
+            one(p, len, f);
+            p += 2 + len, n -= 2 + len;
+        }
+        std::memcpy(tail_, p, n);
+        held_ = n;
     }
     std::size_t malformed() const { return malformed_; }
+    // A new stream: whatever was held is dropped.
+    void reset() {
+        held_ = 0;
+        malformed_ = 0;
+    }
 
 private:
-    std::vector<unsigned char> buf_;
-    std::size_t malformed_ = 0;
+    template <class F>
+    static void one(const unsigned char* at, std::size_t len, F& f) {
+        const char type = static_cast<char>(at[2]);
+        if (type != '+') f(type, at + 3, len - 1);
+    }
+
+    unsigned char tail_[2 + 65535];
+    std::size_t held_ = 0, malformed_ = 0;
 };
 
 }  // namespace itchfh::soup

@@ -32,13 +32,15 @@ enum counter : std::uint32_t {
     book_bad,           // events refused by the book (note 002's D5), every kind
     consumers_live, publisher_overruns, consumers_remote,
     recorded, unrecorded, recorder_backlog, recorded_bytes,
+    snapshots, snapshot_failures, snapshot_waits, last_recovery_ns, recovering_now,  // note 011, D7
     refreshes,
     n_counters
 };
 inline constexpr const char* names[n_counters] = {
     "feed_state", "since_datagram_ms", "datagrams", "answers", "messages", "undecoded", "kernel_drops", "answer_drops",
     "packets", "malformed", "other_session", "gaps", "requests", "retried", "hold_full", "held_now", "duplicate_messages",
-    "book_bad", "consumers_live", "publisher_overruns", "consumers_remote", "recorded", "unrecorded", "recorder_backlog", "recorded_bytes", "refreshes"};
+    "book_bad", "consumers_live", "publisher_overruns", "consumers_remote", "recorded", "unrecorded", "recorder_backlog", "recorded_bytes",
+    "snapshots", "snapshot_failures", "snapshot_waits", "last_recovery_ns", "recovering", "refreshes"};
 
 using values = std::uint64_t[n_counters];
 
@@ -46,7 +48,8 @@ using values = std::uint64_t[n_counters];
 // do not by themselves make the feed unhealthy (they are recovered, or marked).
 enum health_bit : std::uint32_t {
     feed_stale = 1, feed_lost = 2, feed_gapped = 4, silent = 8, recorder_unrecorded = 16, publisher_overrun = 32,
-    consumer_remote = 64  // a consumer on another NUMA node than the publisher's (note 008, Review)
+    consumer_remote = 64,  // a consumer on another NUMA node than the publisher's (note 008, Review)
+    recovering = 128       // a snapshot being applied (note 011, D7)
 };
 inline std::uint32_t health(const values& v) {
     const auto s = static_cast<feed_state>(v[feed_state_now]);
@@ -58,6 +61,7 @@ inline std::uint32_t health(const values& v) {
     if (v[unrecorded] > 0) h |= recorder_unrecorded;
     if (v[publisher_overruns] > 0) h |= publisher_overrun;
     if (v[consumers_remote] > 0) h |= consumer_remote;
+    if (v[recovering_now] > 0) h |= recovering;
     return h;
 }
 // Unhealthy: stale, lost, silent, a datagram unrecorded, a consumer overrun or
@@ -65,7 +69,7 @@ inline std::uint32_t health(const values& v) {
 inline bool unhealthy(std::uint32_t h) { return (h & ~static_cast<std::uint32_t>(feed_gapped)) != 0; }
 
 inline constexpr std::uint64_t block_magic = 0x6974636866686D6EULL;  // "itchfhmn"
-inline constexpr std::uint32_t block_version = 2;  // 2: consumers_remote
+inline constexpr std::uint32_t block_version = 3;  // 2: consumers_remote; 3: snapshots (note 011)
 
 struct alignas(64) block_layout {
     std::uint64_t magic;
@@ -200,6 +204,17 @@ void gather(values& v, Feed& f, const Book& book, const Publisher* pub, const Re
         v[recorded_bytes] = rec->bytes_written();
     }
     ++v[refreshes];
+}
+
+// A recovery's counters (note 011), into `v`; after gather().
+template <class Recovery>
+void gather_recovery(values& v, const Recovery& r) {
+    const auto& c = r.counts();
+    v[snapshots] = c.snapshots;
+    v[snapshot_failures] = c.failures;
+    v[snapshot_waits] = c.waits;
+    v[last_recovery_ns] = static_cast<std::uint64_t>(c.last_ns);
+    v[recovering_now] = r.recovering();
 }
 
 }  // namespace itchfh::mon

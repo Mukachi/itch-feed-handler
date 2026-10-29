@@ -34,6 +34,12 @@ and the whole day's throughput ([note 010](docs/design/010-measurement.md)):
 One way, open loop, from the packet's intended send time to a consumer process reading the update, recording on; and the whole day from a recording at full speed. ns, range over runs. The method and every pace: [RESULTS.md](RESULTS.md).
 <!-- /results -->
 
+Recovering from a snapshot when the feed is lost ([note 011](docs/design/011-snapshot-recovery.md)):
+
+<!-- results:recovery-summary -->
+Recovery figures: not yet measured (design note 011).
+<!-- /results -->
+
 Receiving, over loopback and a 10GBASE-T card ([note 007](docs/design/007-receiver-framer.md)):
 
 <!-- results:feed-summary -->

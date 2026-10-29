@@ -10,7 +10,8 @@
 //       instrument by instrument, each side best first, each level in time
 //       priority; End of Snapshot (N, 20 ASCII digits); End of Session
 //   D4  the client feeds the spin through the same decoder and handler as the
-//       live feed, into a fresh book and handler, and learns N
+//       live feed (B, `decode`: note 011's D6; it was C), into a fresh book
+//       and handler, and learns N
 //   D5  the rebuilt handler marks what GLIMPSE could not restore
 // Design: docs/design/006-snapshots-replay.md
 #pragma once
@@ -52,6 +53,8 @@ public:
         handler_.on(m);
         ++next_;
     }
+    // A message that could not be decoded: counted past (note 011's service follows a store).
+    void skip() { ++next_; }
     std::uint64_t next() const { return next_; }
     const reference_book& book() const { return book_; }
     const reference_handler<reference_book, quiet>& handler() const { return handler_; }
@@ -142,26 +145,38 @@ private:
 // The client's rebuild (D4): the spin's bytes, in any pieces, into `h` (a
 // fresh handler on a fresh book), through the default decoder. Once End of
 // Snapshot has come, `resume()` gives the number to resume the feed from and
-// the handler is marked restored (D5).
+// the handler is marked restored (D5). A Login Rejected is `rejected()`.
+// restart() begins another spin, into another handler, keeping the reader's
+// room (note 011: the program keeps one client across recoveries).
 template <class Handler>
 class snapshot_client {
 public:
-    explicit snapshot_client(Handler& h) : h_(h) {}
+    explicit snapshot_client(Handler& h) : h_(&h) {}
+
+    void restart(Handler& h) {
+        h_ = &h;
+        reader_.reset();
+        logged_in_ = rejected_ = ended_ = false;
+        resume_.reset();
+        messages_ = undecoded_ = 0;
+    }
 
     void feed(const unsigned char* p, std::size_t n) {
         reader_.feed(p, n, [&](char type, const unsigned char* body, std::size_t len) {
             if (type == 'A') {
                 logged_in_ = len == 30;
+            } else if (type == 'J') {
+                rejected_ = true;
             } else if (type == 'S') {
                 std::uint64_t next;
                 if (soup::read_end_of_snapshot(body, len, next)) {
                     resume_ = next;
-                    h_.mark_restored();
+                    h_->mark_restored();
                     return;
                 }
                 message m;
-                if (decode_simd_unpadded(body, len, m) == decode_status::ok) {
-                    h_.on(m);
+                if (decode(body, len, m) == decode_status::ok) {
+                    h_->on(m);
                     ++messages_;
                 } else {
                     ++undecoded_;
@@ -172,15 +187,18 @@ public:
         });
     }
     bool logged_in() const { return logged_in_; }
+    bool rejected() const { return rejected_; }
+    // Undecodable messages or SoupBinTCP packets: the spin is not to be trusted.
+    bool malformed() const { return undecoded_ > 0 || reader_.malformed() > 0; }
     std::optional<std::uint64_t> resume() const { return resume_; }
     bool ended() const { return ended_; }
     std::uint64_t messages() const { return messages_; }
     std::uint64_t undecoded() const { return undecoded_; }
 
 private:
-    Handler& h_;
+    Handler* h_;
     soup::reader reader_;
-    bool logged_in_ = false, ended_ = false;
+    bool logged_in_ = false, rejected_ = false, ended_ = false;
     std::optional<std::uint64_t> resume_;
     std::uint64_t messages_ = 0, undecoded_ = 0;
 };

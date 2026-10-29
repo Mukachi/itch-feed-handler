@@ -132,6 +132,10 @@ public:
         settle(now);
     }
 
+    // Lost on purpose (note 011, D1: a late join from a snapshot): nothing is
+    // asked for; what arrives is held until resume().
+    void lose() { change(feed_state::lost); }
+
     feed_state state() const { return state_; }
     std::uint64_t next_expected() const { return next_; }
     std::size_t held_packets() const { return heap_n_; }

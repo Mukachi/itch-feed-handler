@@ -11,17 +11,26 @@
 //      a longer form adding the day's own pace sped up by (double, 0: the
 //      fixed pace) and the ITCH times from and to (u64 ns since midnight, 0:
 //      from 1 and to `last`), answered with the first and last messages the
-//      times resolve to (two u64), which the receiver must expect
+//      times resolve to (two u64), which the receiver must expect; and, for
+//      note 011, a form longer again adding messages lost on purpose, from
+//      and to (two u64, 0: none): their packets not sent, requests for them
+//      refused
 //   S  stop the run; the reply is its counts (sender_counts, as laid out here)
 //   Q  quit
 // The sending runs on `cpu` (a reserved one); the control thread blocks on
 // its socket, pinned to `control cpu` (a housekeeping one). Given a stamps
 // name, it writes each message's intended send time there (note 010, D1).
-// Design: docs/design/007-receiver-framer.md
+// Given a snapshot CPU, a GLIMPSE service on the request port + 2 (note 011,
+// D2): a thread on that CPU following what has been sent, a spin for each
+// login. A run that starts behind what it has followed starts it again from
+// message 1; a run from the middle of the day waits until it has followed
+// that far (minutes, on note 006's reference structures).
+// Design: docs/design/007-receiver-framer.md, docs/design/011-snapshot-recovery.md
 //
-// Usage: feed_sender <interface ip> <group> <port> <request port> <cpu> <control cpu> [day.gz [stamps name]]
+// Usage: feed_sender <interface ip> <group> <port> <request port> <cpu> <control cpu> [day.gz [stamps name|- [snapshot cpu]]]
 #include <itchfh/mold_sender.hpp>
 #include <itchfh/session_store.hpp>
+#include <itchfh/snapshot_link.hpp>
 #include <itchfh/udp.hpp>
 
 #include "stamps.hpp"
@@ -29,6 +38,7 @@
 #include <lfipc/bench/cross_cpu.hpp>
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cstdio>
 #include <cstdlib>
@@ -46,7 +56,7 @@ struct command {
     char what = 0;
     fh::mold::session_id session{};
     double pace = 0, drop = 0, speed = 0;
-    std::uint64_t last = 0, from_ns = 0, to_ns = 0, first = 1;
+    std::uint64_t last = 0, from_ns = 0, to_ns = 0, first = 1, lose_from = 0, lose_to = 0;
 };
 
 // A command's layout: the letter, then for R the fields in order, unpadded.
@@ -54,7 +64,7 @@ bool read_command(const unsigned char* p, std::size_t n, command& c) {
     if (n < 1) return false;
     c.what = static_cast<char>(p[0]);
     if (c.what != 'R') return c.what == 'S' || c.what == 'Q';
-    if (n != 1 + 10 + 8 + 8 + 8 && n != 1 + 10 + 8 + 8 + 8 + 8 + 8 + 8) return false;
+    if (n != 35 && n != 59 && n != 75) return false;
     std::memcpy(c.session.data(), p + 1, 10);
     std::memcpy(&c.pace, p + 11, 8);
     std::memcpy(&c.drop, p + 19, 8);
@@ -63,6 +73,10 @@ bool read_command(const unsigned char* p, std::size_t n, command& c) {
         std::memcpy(&c.speed, p + 35, 8);
         std::memcpy(&c.from_ns, p + 43, 8);
         std::memcpy(&c.to_ns, p + 51, 8);
+    }
+    if (n > 59) {
+        std::memcpy(&c.lose_from, p + 59, 8);
+        std::memcpy(&c.lose_to, p + 67, 8);
     }
     return c.pace > 0 || c.speed > 0;
 }
@@ -113,7 +127,7 @@ int main(int argc, char** argv) {
     }
     std::string why;
     fh::bench::stamp_array* stamps = nullptr;
-    if (argc > 8 && !(stamps = fh::bench::open_stamps(argv[8], true, why))) {
+    if (argc > 8 && std::string(argv[8]) != "-" && !(stamps = fh::bench::open_stamps(argv[8], true, why))) {
         std::fprintf(stderr, "feed_sender: %s\n", why.c_str());
         return 1;
     }
@@ -130,6 +144,37 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    // Note 011: the snapshot service, on its own thread, following the run in progress.
+    const int snapshot_cpu = argc > 9 ? std::atoi(argv[9]) : -1;
+    std::atomic<std::uint64_t> sent{1}, generation{0}, run_first{1}, taken{0};  // taken: the run the service has started on
+    fh::mold::session_id run_session{};
+    std::atomic<bool> quit{false};
+    std::thread snapshots;
+    fh::glimpse_service glimpse;
+    if (snapshot_cpu >= 0) {
+        if (!glimpse.open(ip, static_cast<std::uint16_t>(request_port + 2), why)) {
+            std::fprintf(stderr, "feed_sender: %s\n", why.c_str());
+            return 1;
+        }
+        snapshots = std::thread([&] {
+            lfipc::bench::detail::pin_to(snapshot_cpu);
+            std::uint64_t seen = 0;
+            while (!quit.load(std::memory_order_relaxed)) {
+                if (const std::uint64_t g = generation.load(std::memory_order_acquire); g != seen) {
+                    seen = g;
+                    if (run_first.load(std::memory_order_relaxed) < glimpse.followed()) glimpse.reset(run_session);
+                    else glimpse.rename(run_session);
+                    taken.store(g, std::memory_order_release);
+                }
+                if (seen == 0) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    continue;
+                }
+                glimpse.step(*store, sent);
+            }
+        });
+    }
+
     // The control thread hands commands over; the sending thread (this one) runs them.
     std::mutex mu;
     std::condition_variable cv;
@@ -141,7 +186,7 @@ int main(int argc, char** argv) {
     std::thread control([&] {
         lfipc::bench::detail::pin_to(control_cpu);
         for (;;) {
-            unsigned char b[64];
+            unsigned char b[128];
             sockaddr_in from;
             socklen_t fl = sizeof(from);
             const ssize_t n = ::recvfrom(ctl, b, sizeof(b), 0, reinterpret_cast<sockaddr*>(&from), &fl);
@@ -171,6 +216,7 @@ int main(int argc, char** argv) {
     });
     std::fprintf(stderr, "feed_sender: %llu messages loaded; sending to %s:%u from %s, requests on %u, control on %u, CPU %d\n",
                  static_cast<unsigned long long>(store->count()), group.c_str(), port, ip.c_str(), request_port, request_port + 1, cpu);
+    if (snapshot_cpu >= 0) std::fprintf(stderr, "feed_sender: snapshots on %u, CPU %d\n", request_port + 2, snapshot_cpu);
     for (;;) {
         command c;
         {
@@ -185,6 +231,15 @@ int main(int argc, char** argv) {
         }
         if (c.what == 'Q') break;
         store->set_session(c.session);
+        run_session = c.session;
+        run_first.store(c.first, std::memory_order_relaxed);
+        sent.store(c.first, std::memory_order_release);
+        const std::uint64_t g = generation.fetch_add(1, std::memory_order_acq_rel) + 1;
+        if (snapshot_cpu >= 0) {  // the service on this run and caught up to where it starts, first
+            while ((taken.load(std::memory_order_acquire) != g || glimpse.followed() < c.first) && !stop.load(std::memory_order_relaxed))
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            std::fprintf(stderr, "feed_sender: snapshots followed to message %llu\n", static_cast<unsigned long long>(glimpse.followed()));
+        }
         fh::sender_config sc;
         sc.packets_per_s = c.speed > 0 ? 0 : c.pace;
         sc.speed = c.speed;
@@ -199,11 +254,16 @@ int main(int argc, char** argv) {
             sc.stamp_ctx = stamps;
         }
         sc.heartbeat_ns = 100'000'000;
+        sc.sent = &sent;
+        sc.lose_from = c.lose_from;
+        sc.lose_to = c.lose_to;
         fh::mold_sender s(*store, tx, sc);
         s.run(stop);
         std::lock_guard<std::mutex> l(mu);
         last_counts = s.counts();
     }
     control.join();
+    quit = true;
+    if (snapshots.joinable()) snapshots.join();
     return 0;
 }

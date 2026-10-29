@@ -6,7 +6,10 @@
 // heartbeats while it has nothing to send, then the end of session in their
 // place (the specification: "for a short while in place of Heartbeats";
 // here until stopped, so a receiver that lost the tail still learns of it); and the re-request server (note 005, D6) answering on unicast from
-// the same store, between packets. Busy-polls its CPU.
+// the same store, between packets. Busy-polls its CPU. For note 011: the
+// next message to send, published as it goes (the snapshot server follows
+// it), and a range of messages lost on purpose: their packets not sent and
+// requests for any of them refused, so a receiver must recover otherwise.
 // Design: docs/design/007-receiver-framer.md
 #pragma once
 
@@ -34,6 +37,8 @@ struct sender_config {
     void (*stamp)(void* ctx, std::uint64_t first, std::uint64_t count, std::int64_t due_ns) = nullptr;
     void* stamp_ctx = nullptr;
     int end_markers = 5;       // end-of-session packets after the last, a millisecond apart, then one a heartbeat
+    std::atomic<std::uint64_t>* sent = nullptr;  // note 011: the next message to send, stored after each packet
+    std::uint64_t lose_from = 0, lose_to = 0;    // note 011: messages lost on purpose (0: none)
 };
 
 struct sender_counts {
@@ -42,6 +47,7 @@ struct sender_counts {
     // Note 010, D2: how late each packet went, against its intended time.
     std::int64_t late_max_ns = 0;
     std::uint64_t late_over_10us = 0, late_over_100us = 0;
+    std::uint64_t lost_on_purpose = 0, refused = 0;  // note 011: packets not sent, requests not answered
 };
 
 inline std::int64_t monotonic_ns() {
@@ -88,13 +94,15 @@ public:
                 counts_.late_over_10us += late > 10'000;
                 counts_.late_over_100us += late > 100'000;
             }
-            if (cfg_.drop > 0 && std::uniform_real_distribution<double>(0, 1)(rng_) < cfg_.drop) ++counts_.dropped;
+            if (lost(first, count)) ++counts_.lost_on_purpose;
+            else if (cfg_.drop > 0 && std::uniform_real_distribution<double>(0, 1)(rng_) < cfg_.drop) ++counts_.dropped;
             else out_.send(pk, n);
             ++counts_.packets;
             ++sent;
             counts_.last_ns = monotonic_ns();
             if (counts_.first_ns == 0) counts_.first_ns = counts_.last_ns;
             first += count;
+            if (cfg_.sent) cfg_.sent->store(first, std::memory_order_release);
             last_sent = counts_.last_ns;
             serve();
         }
@@ -122,12 +130,20 @@ private:
         const unsigned char* m = store_.message(s, len);
         return len >= 11 ? mold::detail::be(m + 5, 6) : 0;
     }
+    // Messages first..first+count-1 meet the range lost on purpose.
+    bool lost(std::uint64_t first, std::uint64_t count) const {
+        return cfg_.lose_to > 0 && first <= cfg_.lose_to && first + count > cfg_.lose_from;
+    }
     void serve() {
         unsigned char req[64], pk[mold::header_size + mold::payload];
         std::size_t n;
         sockaddr_in from;
         while (out_.request(req, sizeof(req), n, from)) {
             ++counts_.requests;
+            if (mold::request r; cfg_.lose_to > 0 && mold::read_request(req, n, r) && lost(r.sequence, r.count)) {
+                ++counts_.refused;
+                continue;
+            }
             if (const std::size_t a = store_.answer(req, n, pk)) {
                 out_.answer(pk, a, from);
                 ++counts_.answered;

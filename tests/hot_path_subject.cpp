@@ -11,7 +11,10 @@
 // And publishing (note 008, S5): a message through the handler and its
 // publisher, a change of the feed's state, and the publisher's tick. And
 // recording and monitoring (note 009, S5): a feed pass with the recorder, the
-// recorder's own call, and the monitoring refresh.
+// recorder's own call, and the monitoring refresh. And the program's pass and
+// a slice of a snapshot's recovery (note 011, S6): the pass on the handler that
+// shares its publisher, the slice reading the snapshot's socket, applying,
+// and at End of Snapshot swapping the books and resuming the feed.
 #include <itchfh/book.hpp>
 #include <itchfh/decoder.hpp>
 #include <itchfh/feed.hpp>
@@ -19,6 +22,7 @@
 #include <itchfh/monitoring.hpp>
 #include <itchfh/publisher.hpp>
 #include <itchfh/recording.hpp>
+#include <itchfh/recovery.hpp>
 #include <itchfh/sequencer.hpp>
 
 #define ITCHFH_SUBJECT(R, L)                                                                                    \
@@ -82,6 +86,15 @@ extern "C" [[gnu::noinline]] void itchfh_monitor_refresh(itchfh::mon::block& b, 
                                                          const itchfh::rec::recorder* r, std::int64_t now) {
     itchfh::mon::gather(v, f, book, p, r, now);
     b.write(v);
+}
+
+using program_feed = itchfh::feed_one<itchfh::published_on<itchfh::default_book>, itchfh::no_probe, itchfh::rec::recorder>;
+extern "C" [[gnu::noinline]] void itchfh_program_poll(program_feed& f) { f.poll(); }
+extern "C" [[gnu::noinline]] bool itchfh_recovery_slice(itchfh::recovery<itchfh::default_book>& r, program_feed& f, std::int64_t now) {
+    return r.slice(f, now);
+}
+extern "C" [[gnu::noinline]] void itchfh_recovery_refresh(itchfh::mon::values& v, const itchfh::recovery<itchfh::default_book>& r) {
+    itchfh::mon::gather_recovery(v, r);
 }
 
 int main() { return 0; }

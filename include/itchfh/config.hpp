@@ -22,7 +22,14 @@ struct program_config {
     int buffer_bytes = 4 << 20, busy_poll_us = 0;
     bool batch = false;  // recvmmsg; the default recvmsg (note 007, D1)
     int cpu = 2, writer_cpu = 1;
-    std::uint64_t hold_mb = 64, orders = 4'000'000, levels = 2'000'000;
+    std::uint64_t hold_mb = 256, orders = 4'000'000, levels = 2'000'000;  // hold: note 011's D5 (was 64)
+    // Note 011: the snapshot service (its address the re-request server's
+    // unless given; port 0: no recovery, a lost feed waits), a late start
+    // joined from a snapshot, and the CPU the standby is rebuilt on.
+    std::string snapshot_ip;
+    std::uint16_t snapshot_port = 26403;
+    bool join_snapshot = false;
+    int rebuild_cpu = 1;
     std::string publish = "/itchfh-pub", record_dir, monitor = "/itchfh-mon";  // empty: not done
     std::uint64_t digest = 0;
 };
@@ -83,6 +90,14 @@ inline bool parse_config(const std::string& text, program_config& c, std::string
         } else if (k == "port" || k == "server_port") {
             if (!number(1, 65535, x)) return bad(k + ": a port, 1 to 65535");
             (k == "port" ? c.port : c.server_port) = static_cast<std::uint16_t>(x);
+        } else if (k == "snapshot") {
+            if (!ip(c.snapshot_ip)) return bad("snapshot: not an IPv4 address");
+        } else if (k == "snapshot_port") {
+            if (!number(0, 65535, x)) return bad("snapshot_port: a port, or 0 for none");
+            c.snapshot_port = static_cast<std::uint16_t>(x);
+        } else if (k == "join") {
+            if (v != "start" && v != "snapshot") return bad("join: start or snapshot");
+            c.join_snapshot = v == "snapshot";
         } else if (k == "buffer_bytes") {
             if (!number(65536, 1u << 30, x)) return bad("buffer_bytes: 65536 to 2^30");
             c.buffer_bytes = static_cast<int>(x);
@@ -92,9 +107,9 @@ inline bool parse_config(const std::string& text, program_config& c, std::string
         } else if (k == "read") {
             if (v != "recvmsg" && v != "recvmmsg") return bad("read: recvmsg or recvmmsg");
             c.batch = v == "recvmmsg";
-        } else if (k == "cpu" || k == "writer_cpu") {
+        } else if (k == "cpu" || k == "writer_cpu" || k == "rebuild_cpu") {
             if (!number(0, 1023, x)) return bad(k + ": a CPU number");
-            (k == "cpu" ? c.cpu : c.writer_cpu) = static_cast<int>(x);
+            (k == "cpu" ? c.cpu : k == "writer_cpu" ? c.writer_cpu : c.rebuild_cpu) = static_cast<int>(x);
         } else if (k == "hold_mb") {
             if (!number(1, 4096, x)) return bad("hold_mb: 1 to 4096");
             c.hold_mb = x;
@@ -109,6 +124,7 @@ inline bool parse_config(const std::string& text, program_config& c, std::string
             return bad("unknown key " + k);
         }
     }
+    if (c.snapshot_ip.empty()) c.snapshot_ip = c.server_ip;
     std::uint64_t h = 1469598103934665603ULL;
     for (const auto& [k, v] : seen)
         for (const char ch : k + "=" + v + "\n") h = (h ^ static_cast<unsigned char>(ch)) * 1099511628211ULL;
