@@ -28,8 +28,9 @@ the pass running the publisher's tick, its kill), the recorder's own call, and
 the monitoring refresh: memory functions alone. Recovery (note 011, S6): the
 program's pass on the handler sharing its publisher, as the recorded pass; a
 slice of a snapshot, which may also call recv (reading the snapshot's socket,
-errno after it), close (once, ending the spin) and clock_gettime (timing the
-recovery), and decodes with B; and its monitoring refresh: memory alone.
+errno after it), close and a futex wake (`syscall`: once, ending the spin, the
+standby's rebuild thread woken) and clock_gettime (timing the recovery), and
+decodes with B; and its monitoring refresh: memory alone.
 """
 import re
 import subprocess
@@ -49,7 +50,7 @@ INDIRECT_ALLOWED = {"itchfh_decode_table", "itchfh_feed_one_poll", "itchfh_feed_
 MEMORY = {"memcpy@plt", "__memcpy_chk@plt", "memmove@plt", "__memmove_chk@plt", "memcmp@plt", "__stack_chk_fail@plt",
           "memset@plt", "__memset_chk@plt"}
 SOCKET = {"recvmmsg@plt", "recvmsg@plt", "sendto@plt", "clock_gettime@plt"}
-SNAPSHOT = {"recv@plt", "close@plt", "clock_gettime@plt", "__errno_location@plt"}  # a slice of a snapshot (note 011)
+SNAPSHOT = {"recv@plt", "close@plt", "syscall@plt", "clock_gettime@plt", "__errno_location@plt"}  # a slice of a snapshot (note 011)
 FEED = {"itchfh_record_poll", "itchfh_program_poll"}  # passes that also run the publisher's tick
 
 failures = 0

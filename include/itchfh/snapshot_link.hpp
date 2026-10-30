@@ -76,8 +76,16 @@ public:
 
     // One step on the serving thread: the store followed up to `sent` (at
     // most `most` messages), then one waiting login served, if there is one.
-    void step(const session_store& st, const std::atomic<std::uint64_t>& sent, std::uint64_t most = 100'000) {
+    // Caught up, it waits in poll() for a login, at most `idle_ms`, rather
+    // than spinning on accept (the sender's reserved CPUs were all disturbed
+    // while it spun: note 011, Review).
+    void step(const session_store& st, const std::atomic<std::uint64_t>& sent, std::uint64_t most = 100'000, int idle_ms = 50) {
+        const std::uint64_t before = server_->next();
         follow(st, sent.load(std::memory_order_acquire), most);
+        if (server_->next() == before) {
+            pollfd p{fd_, POLLIN, 0};
+            if (::poll(&p, 1, idle_ms) <= 0) return;
+        }
         const int c = ::accept4(fd_, nullptr, nullptr, SOCK_CLOEXEC);
         if (c < 0) return;
         serve(c, st, sent);

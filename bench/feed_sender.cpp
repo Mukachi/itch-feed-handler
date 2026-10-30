@@ -166,8 +166,8 @@ int main(int argc, char** argv) {
                     else glimpse.rename(run_session);
                     taken.store(g, std::memory_order_release);
                 }
-                if (seen == 0) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                if (seen == 0) {  // no run yet: blocked until one starts (or quit)
+                    generation.wait(0, std::memory_order_acquire);
                     continue;
                 }
                 glimpse.step(*store, sent);
@@ -235,6 +235,7 @@ int main(int argc, char** argv) {
         run_first.store(c.first, std::memory_order_relaxed);
         sent.store(c.first, std::memory_order_release);
         const std::uint64_t g = generation.fetch_add(1, std::memory_order_acq_rel) + 1;
+        generation.notify_all();
         if (snapshot_cpu >= 0) {  // the service on this run and caught up to where it starts, first
             while ((taken.load(std::memory_order_acquire) != g || glimpse.followed() < c.first) && !stop.load(std::memory_order_relaxed))
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -264,6 +265,8 @@ int main(int argc, char** argv) {
     }
     control.join();
     quit = true;
+    generation.fetch_add(1, std::memory_order_release);  // wakes the service if it never saw a run
+    generation.notify_all();
     if (snapshots.joinable()) snapshots.join();
     return 0;
 }

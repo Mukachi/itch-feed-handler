@@ -89,6 +89,8 @@ public:
     recovery& operator=(const recovery&) = delete;
     ~recovery() {
         stop_.store(true, std::memory_order_release);
+        standby_.store(quit, std::memory_order_release);
+        standby_.notify_one();
         worker_.join();
     }
 
@@ -171,7 +173,7 @@ public:
 
 private:
     enum class phase { idle, connecting, reading };
-    static constexpr int ready = 0, dirty = 1;
+    static constexpr int ready = 0, dirty = 1, quit = 2;
     struct slot {
         std::unique_ptr<Book> book;
         std::unique_ptr<pair> p;
@@ -220,6 +222,7 @@ private:
     void rebuild(int which) {
         rebuild_which_.store(which, std::memory_order_relaxed);
         standby_.store(dirty, std::memory_order_release);
+        standby_.notify_one();  // a futex wake: the thread blocks, never polls (note 011, Review)
     }
     void rebuild_loop() {
         if (cfg_.rebuild_cpu >= 0) {
@@ -229,10 +232,8 @@ private:
             ::pthread_setaffinity_np(::pthread_self(), sizeof(set), &set);
         }
         while (!stop_.load(std::memory_order_acquire)) {
-            if (standby_.load(std::memory_order_acquire) != dirty) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                continue;
-            }
+            standby_.wait(ready, std::memory_order_acquire);  // blocked until there is a rebuild to do, or quit
+            if (standby_.load(std::memory_order_acquire) != dirty) continue;
             rebuild_from_.store(monotonic_ns(), std::memory_order_release);
             build(slots_[rebuild_which_.load(std::memory_order_relaxed)]);
             rebuild_to_.store(monotonic_ns(), std::memory_order_release);
