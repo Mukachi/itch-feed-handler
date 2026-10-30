@@ -217,7 +217,9 @@ outcome run(const world& w, const options& o) {
             flowing = true;
             f.seq().lose();
         }
-        if (rcv.step(f, now)) recovery<default_book>::drain(f);
+        // Lost in order: the recovery waits for packets to be held, or a fast spin (CI's) holds none and proves nothing.
+        const bool hold_first = o.lose_when_flowing && f.seq().state() == feed_state::lost && f.seq().held_packets() < 8;
+        if (!hold_first && rcv.step(f, now)) recovery<default_book>::drain(f);
         pub::update u;
         while (c.poll(u)) cb.apply(u);
         if (c.overrun()) c.rejoin();
