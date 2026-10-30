@@ -9,7 +9,7 @@ Decided with Shep 2026-10-30: every item below as written.
 
 | # | Item | Note | Touches a published figure | Decision |
 |---|---|---|---|---|
-| I1 | Note 008's publish set not re-measured after the mute change (a branch on every publish) | 011, 008 | Publish set | fix: three `publish_bench` runs, republish |
+| I1 | Note 008's publish set not re-measured after the mute change (a branch on every publish) | 011, 008 | Publish set | fix: three `publish_bench` runs, republish. **Closed** 2026-10-30: republished at `24f569c`, every range overlaps the old (note 008, Review) |
 | I2 | A backlog after recovery is delivered in one call: the day test at 15k packets/s had 2,642 kernel drops; also the remedy for I3 | 011, 007 | No (S3 is at the peak's pace) | limit: stated in note 011 and the README; chunked delivery not built |
 | I3 | Two receiving threads lost the feed in 2 of 4 whole-day runs after the open | 007 | Two-thread rows | limit: already S1's stated qualification; one thread is the default |
 | I4 | The peak of live orders is quiet (~1.3k packets/s); a recovery at the busiest second (~16k) would hold ~12x as much | 011 | Recovery set | limit: stated beside the recovery figures |

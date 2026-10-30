@@ -28,9 +28,9 @@ runs = ["feed-dev-lnx01-20261027T004056Z.json", "feed-dev-lnx01-20261027T004554Z
 
 [publish]
 note = "008"
-runs = ["publish-dev-lnx01-20261028T162547Z.json",
-        "publish-dev-lnx01-20261028T162758Z.json",
-        "publish-dev-lnx01-20261028T163012Z.json"]
+runs = ["publish-dev-lnx01-20261030T182555Z.json",
+        "publish-dev-lnx01-20261030T182809Z.json",
+        "publish-dev-lnx01-20261030T183025Z.json"]
 
 [record]
 note = "009"

@@ -14,7 +14,7 @@ HP ProLiant DL380 Gen9, BIOS P89 (08/29/2024); 2 × Intel(R) Xeon(R) CPU E5-2699
 | sequencer (note 005) | 6 | 2026-10-26 20:01 UTC | 695b3bf | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | snapshot (note 006) | 3 | 2026-10-30 15:25 UTC | cc4673a | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | feed (note 007) | 9 | 2026-10-27 00:40 UTC | ee4adfe | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
-| publish (note 008) | 3 | 2026-10-28 16:25 UTC | 1f39862 | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
+| publish (note 008) | 3 | 2026-10-30 18:25 UTC | 24f569c | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | record (note 009) | 3 | 2026-10-27 21:58 UTC | cc7ea58 | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | e2e (note 010) | 6 | 2026-10-28 15:38 UTC | 1f39862 | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | throughput (note 010) | 3 | 2026-10-28 16:32 UTC | 1f39862 | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
@@ -378,11 +378,11 @@ The first 50,000,000 messages of the sample day `01302020.NASDAQ_ITCH50.gz`, dec
 
 | Case | M messages/s | p50 | p99 | p99.9 | Write to read p50, first consumer | p99 | Write to read p50, last consumer |
 |---|---|---|---|---|---|---|---|
-| no publisher | 4.31–4.32 | 197 | 628–629 | 892–894 | – | – | – |
-| table only | 3.08–3.10 | 269–270 | 764–768 | 1,055–1,061 | – | – | – |
-| 1 consumer | 2.79–3.34 | 229–291 | 699–811 | 997–1,114 | 281–316 | 556–670 | – |
-| 2 consumers | 2.35–2.43 | 350–364 | 894–913 | 1,194–1,212 | 322–377 | 686–741 | 349–391 |
-| 4 consumers | 1.77–1.90 | 453–489 | 1,086–1,145 | 1,394–1,456 | 340–534 | 756–959 | 372–471 |
+| no publisher | 4.32–4.33 | 197 | 626–628 | 884–888 | – | – | – |
+| table only | 3.08–3.18 | 260–270 | 755–770 | 1,044–1,061 | – | – | – |
+| 1 consumer | 2.72–3.40 | 226–293 | 702–814 | 999–1,115 | 273–335 | 552–690 | – |
+| 2 consumers | 2.33–2.40 | 353–368 | 905–921 | 1,205–1,217 | 329–352 | 692–718 | 390–400 |
+| 4 consumers | 1.74–1.78 | 483–496 | 1,145–1,166 | 1,449–1,476 | 360–520 | 799–944 | 402–480 |
 
 ## Recording (note 009)
 
