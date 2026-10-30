@@ -160,14 +160,18 @@ A GLIMPSE 5.0 snapshot at the sample day's peak of live orders: built by the sna
 | Multicast receiver and framer | [007](docs/design/007-receiver-framer.md) | `udp.hpp`, `feed.hpp` |
 | Publisher: a ring per consumer process, a seqlocked state table | [008](docs/design/008-publication.md) | `publisher.hpp`, `consumer.hpp` |
 | Recorder and replay; monitoring block | [009](docs/design/009-recording-monitoring.md) | `recording.hpp`, `replay.hpp`, `monitoring.hpp` |
+| Recovery from a snapshot: a standby book swapped in, GLIMPSE over TCP | [011](docs/design/011-snapshot-recovery.md) | `recovery.hpp`, `snapshot_link.hpp` |
 | Reference book, handler and decoder: the oracles and baselines | 002–004 | `reference_*.hpp` |
 
 Header-only, in `include/itchfh/`. The program `itchfh` (`apps/`) runs them as one thread
-(receive, sequence, decode, handle, publish) with a writer thread for the recording; it reads a
-`key = value` configuration (`config.hpp`), and `itchfh-monitor` reads its monitoring block. A
+(receive, sequence, decode, handle, publish) with a writer thread for the recording; a feed it
+loses is recovered from a snapshot on the same thread, and a late start can join from one. It
+reads a `key = value` configuration (`config.hpp`), and `itchfh-monitor` reads its monitoring
+block. A
 consumer is its own process: [examples/publish_consumer.cpp](examples/publish_consumer.cpp).
-For testing and measurement, MoldUDP64 sender and re-request server of our own
-(`mold_sender.hpp`, `session_store.hpp`), since Nasdaq's feed is not available here.
+For testing and measurement, a MoldUDP64 sender, re-request server and GLIMPSE service of our own
+(`mold_sender.hpp`, `session_store.hpp`, `snapshot_link.hpp`), since Nasdaq's are not available
+here.
 
 In steady state the hot paths allocate nothing, and a test checks their compiled call graphs:
 no allocation, and no system call but the socket reads and writes each is meant to make.
@@ -184,6 +188,11 @@ no allocation, and no system call but the socket reads and writes each is meant 
 - **The program.** The day received and recorded by `itchfh`, then replayed from the recording
   to two consumer processes: both consumers' books equal a book fed the day directly, and every
   update is the same byte for byte as the live run's.
+- **Recovery.** The day through the programs with a range at the peak of live orders lost on
+  purpose (never sent, never answered): the program recovers from a snapshot without a restart,
+  and the consumer's books at the close equal a book fed the day directly. Every way a recovery
+  can fail (no service, a silent one, a refused login, a spin cut short or corrupt) leaves the
+  live books and the state table as they were, and is retried.
 - **Fuzzing.** A libFuzzer target for the decoder, differential against the reference decoder;
   its corpus is committed (`fuzz/`).
 - **CI** on every push: x64, ThreadSanitizer, AddressSanitizer/UBSan and arm64. The whole-day
@@ -202,6 +211,10 @@ no allocation, and no system call but the socket reads and writes each is meant 
 - **The consumer's socket matters.** A consumer on the other NUMA node slows the publisher for
   every consumer; the publisher counts such consumers and reports them, and the example pins
   itself to the publisher's node (notes 008, 009).
+- **Recovery found faults of its own.** The snapshot client decoded with a different decoder
+  from the live feed's; the state table kept an instrument's old entry after a snapshot; and a
+  feed lost while its packets were arriving in order was still applied, then asked for again.
+  Each was fixed and is now tested (notes 006, 008, 011).
 - **The data.** Every crossed book of the day began in a halt or a pause (note 002). Match
   numbers repeat, each first in a non-printable execution and then a printable one, so volume
   counted from printable executions alone counts each once (note 003).
@@ -254,13 +267,16 @@ carry `quiet`. `-DITCHFH_FUZZ=ON` (with clang) builds the fuzzer. The CI script,
 ```sh
 build/book_bench out.json            # and handler_, decoder_, sequencer_, snapshot_, publish_bench
 build/throughput_bench out.json      # the whole day from a recording (13.4 GB, made in build/)
-build/feed_sender 127.0.0.1 239.192.0.1 26400 26401 4 0 data/01302020.NASDAQ_ITCH50.gz /itchfh-stamps &
+build/feed_sender 127.0.0.1 239.192.0.1 26400 26401 4 0 data/01302020.NASDAQ_ITCH50.gz /itchfh-stamps 5 &
 build/feed_bench loopback 127.0.0.1 127.0.0.1 out.json      # receiving (note 007)
 build/record_bench 127.0.0.1 127.0.0.1 out.json             # recording (note 009)
 build/e2e_bench loopback 127.0.0.1 127.0.0.1 out.json       # end to end (note 010)
+build/recovery_bench loopback 127.0.0.1 127.0.0.1 out.json  # recovery from a snapshot (note 011)
 ```
 
-The network benchmarks drive the sender over its control port; for the card, the sender runs in
+The network benchmarks drive the sender over its control port (the last argument, a CPU, starts
+its GLIMPSE service; a run from the middle of the day first waits while the service follows the
+day that far, minutes); for the card, the sender runs in
 the namespace on 10.99.0.2 and the benchmark is given `card` (`card-busy-poll` for `e2e_bench`)
 and 10.99.0.1. Each writes one JSON file: the environment, the noise floor, the clock, then the
 results. Run without a path, a benchmark writes into `results/`, and refuses unless the machine is

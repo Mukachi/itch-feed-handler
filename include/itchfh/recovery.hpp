@@ -163,6 +163,9 @@ public:
     }
 
     bool recovering() const { return phase_ != phase::idle; }
+    // The standby's last rebuild (monotonic ns, from its thread; 0 before the first).
+    std::int64_t rebuild_started_ns() const { return rebuild_from_.load(std::memory_order_acquire); }
+    std::int64_t rebuild_ended_ns() const { return rebuild_to_.load(std::memory_order_acquire); }
     bool standby_ready() const { return standby_.load(std::memory_order_acquire) == ready; }
     const recovery_counts& counts() const { return counts_; }
 
@@ -230,7 +233,9 @@ private:
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 continue;
             }
+            rebuild_from_.store(monotonic_ns(), std::memory_order_release);
             build(slots_[rebuild_which_.load(std::memory_order_relaxed)]);
+            rebuild_to_.store(monotonic_ns(), std::memory_order_release);
             standby_.store(ready, std::memory_order_release);
         }
     }
@@ -251,6 +256,7 @@ private:
     recovery_counts counts_;
     std::atomic<int> standby_{ready}, rebuild_which_{1};
     std::atomic<bool> stop_{false};
+    std::atomic<std::int64_t> rebuild_from_{0}, rebuild_to_{0};
     std::thread worker_;
 };
 

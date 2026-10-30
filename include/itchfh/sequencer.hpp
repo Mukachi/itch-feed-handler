@@ -10,7 +10,10 @@
 //       more asked as answers move it on; the window asked again from the
 //       front after the timeout without progress, up to the retries
 //   D3  messages below the next expected are dropped and counted
-//   D4  spent retries or a full hold: `lost`, until resume() from a snapshot
+//   D4  spent retries or a full hold: `lost`, until resume() from a snapshot;
+//       while lost every packet reaching past the next expected is held, none
+//       applied (note 011: one in order was applied to books about to be
+//       replaced, and resume() then moved the next expected back)
 //   D5  nothing within the staleness bound: `stale`; a heartbeat beyond the
 //       next expected is a gap at the tail; another session is refused
 // The output (a template parameter) has three calls, made directly:
@@ -94,7 +97,7 @@ public:
             if (last <= next_) {
                 ++counts_.duplicate_packets;
                 counts_.duplicate_messages += h.count;
-            } else if (first <= next_) {
+            } else if (first <= next_ && state_ != feed_state::lost) {
                 apply(p, n);
                 drain();
             } else {

@@ -7,15 +7,21 @@
 // its ring and takes CLOCK_MONOTONIC less each message's intended send time.
 // One run: the day at its own pace from 20 s before the peak of live orders
 // (message 412,349,206, 15:57:45.69: note 006) to 20 s after; the program
-// joins from a snapshot (D1's late join, measured too); 2,000 messages from
+// joins from a snapshot once the feed is flowing (D1's late join, measured
+// too: lost on its first datagram; asked earlier, our service is still
+// following the day to the start, minutes, and the client times out and
+// retries, which is not what is measured); 2,000 messages from
 // the peak are lost on purpose (not sent, requests for them refused), so the
 // feed is lost and recovered. Each recovery from `lost` (or the start) to
 // `live` with the hold drained, in three parts: asking until the spin's first
 // byte (the server's build and the login), the spin read and applied in
 // slices, the held feed delivered; with the spin's size and the packets held,
 // and the kernel's drops over the recovery. Latency (intended send to the
-// consumer's read) before the loss, and for the messages of the 2 s of day
-// time from the loss (held, then delivered). Checked: two snapshots, none
+// consumer's read) before the loss (from 5 s after the start: the join's own
+// held messages left out), and for the messages of the 2 s of day time from
+// the loss (held, then delivered), each message's first update
+// counted once: a replay after a snapshot repeats sequence numbers already
+// seen and is not a message's latency. Checked: two snapshots, none
 // failed, the feed ended, the consumer neither overrun nor on another node.
 // Run JSON through lockfree-ipc's harness.
 // Design: docs/design/011-snapshot-recovery.md
@@ -58,6 +64,7 @@ constexpr int cpu = 2, consumer_cpu = 3, rebuild_cpu = 1;
 constexpr std::uint64_t peak = 412'349'206, lost_messages = 2'000;
 constexpr std::uint64_t peak_ns = 57'465'685'679'090;  // the peak message's ITCH time (15:57:45.685679)
 constexpr std::uint64_t from_ns = peak_ns - 20'000'000'000, to_ns = peak_ns + 20'000'000'000, window_ns = 2'000'000'000;
+constexpr std::uint64_t settle_ns = 5'000'000'000;  // "before the loss" from 5 s of day time after the start: the join and its backlog past
 constexpr std::uint16_t port = 26400, request_port = 26401, control_port = 26402, snapshot_port = 26403;
 const char* const stamps_name = "/itchfh-stamps";
 using hist = histogram<10, 40>;
@@ -101,7 +108,7 @@ struct latency {
     double p50 = -1, p99 = -1, p999 = -1, max = -1;  // ns
 };
 struct consumer_report {
-    latency before, after;  // before the loss; the 2 s of day time from it
+    latency before, after;  // from 5 s after the start to the loss; the 2 s of day time from it
     bool attached = false, overrun = false, remote = false;
 };
 
@@ -110,8 +117,8 @@ latency summary(const hist& h) {
     return {h.count(), v(h.percentile(50)), v(h.percentile(99)), v(h.percentile(99.9)), static_cast<double>(h.max())};
 }
 
-// The consumer process: on CPU 3, its ring read until the feed ends; only
-// while live (a replay after a snapshot is the books, not messages).
+// The consumer process: on CPU 3, its ring read until the feed ends; each
+// message's first update, by a sequence number newer than any seen.
 void consumer_main(const std::string& name, int out) {
     lfipc::bench::detail::pin_to(consumer_cpu);
     consumer_report r;
@@ -124,6 +131,7 @@ void consumer_main(const std::string& name, int out) {
         c.report_node();
         r.remote = fh::pub::node_of(::sched_getcpu()) != c.publisher_node();
         auto before = std::make_unique<hist>(), after = std::make_unique<hist>();
+        std::uint64_t newest = 0;
         fh::pub::update u;
         for (;;) {
             if (!c.poll(u)) {
@@ -138,9 +146,10 @@ void consumer_main(const std::string& name, int out) {
                 if (u.feed.state == fh::feed_state::ended) break;
                 continue;
             }
-            if (u.k == fh::pub::kind::reset || u.sequence == 0 || (u.flags & fh::pub::continues) || c.state() != fh::pub::slot_live) continue;
+            if (u.k == fh::pub::kind::reset || u.sequence <= newest) continue;
+            newest = u.sequence;
             const auto d = static_cast<std::uint64_t>(now - st->get(u.sequence));
-            if (u.timestamp_ns < peak_ns) before->record(d);
+            if (u.timestamp_ns >= from_ns + settle_ns && u.timestamp_ns < peak_ns) before->record(d);
             else if (u.timestamp_ns < peak_ns + window_ns) after->record(d);
         }
         r.before = summary(*before);
@@ -228,7 +237,7 @@ int main(int argc, char** argv) {
     rc.ip = sender_ip;
     rc.port = snapshot_port;
     rc.rebuild_cpu = rebuild_cpu;
-    rc.join = true;
+    rc.join = false;  // lost by hand on the first datagram, below
     auto rcv = std::make_unique<fh::recovery<>>(*pub, fh::book_config{}, fh::handler_config{}, rc);
     fh::sequencer_config qc;
     qc.hold_bytes = std::size_t{256} << 20;  // D5's default
@@ -248,29 +257,41 @@ int main(int argc, char** argv) {
     std::printf("recovery_bench: messages %llu..%llu at the day's own pace (the sender first follows the day to the start: minutes)\n",
                 static_cast<unsigned long long>(span[0]), static_cast<unsigned long long>(span[1]));
     std::fflush(stdout);
+    qc.first_expected = span[0];
     fh::feed_one<fh::published_on<>> f(rx, rcv->active(), qc);
-    rcv->begin(f);
     fh::recovery_counts join{}, loss{};
     bool joined = false, lost = false, recovered = false;
     std::uint64_t drops_at_start = 0, drops_at_loss = 0, join_drops = 0, loss_drops = 0;
     const std::int64_t give_up = fh::monotonic_ns() + 1'800'000'000'000;  // the sender's catching up, then 40 s
+    bool flowing = false;
+    std::int64_t flowing_at = 0, join_done_at = 0, loss_done_at = 0, join_rebuild_from = 0, join_rebuild_to = 0;
     while (f.seq().state() != fh::feed_state::ended && fh::monotonic_ns() < give_up) {
         f.poll();
         const std::int64_t now = fh::monotonic_ns();
+        if (!flowing && f.counts().datagrams > 0) {  // the late join: what the first packet began is dropped with the rest below N
+            flowing = true;
+            flowing_at = now;
+            drops_at_start = f.counts().kernel_drops;
+            f.seq().lose();
+        }
         if (rcv->step(f, now)) fh::recovery<>::drain(f);
         if (!joined && rcv->counts().snapshots == 1) {
             joined = true;
             join = rcv->counts();
             join_drops = f.counts().kernel_drops - drops_at_start;
+            join_done_at = now;
         }
         if (joined && !lost && f.seq().state() == fh::feed_state::lost) {
             lost = true;
             drops_at_loss = f.counts().kernel_drops;
+            join_rebuild_from = rcv->rebuild_started_ns();  // the join's rebuild, long done by the loss
+            join_rebuild_to = rcv->rebuild_ended_ns();
         }
         if (lost && !recovered && rcv->counts().snapshots == 2) {
             recovered = true;
             loss = rcv->counts();
             loss_drops = f.counts().kernel_drops - drops_at_loss;
+            loss_done_at = now;
         }
     }
     fh::sender_counts sent{};
@@ -318,6 +339,16 @@ int main(int argc, char** argv) {
     run.w.member("sender_late_max_ns", sent.late_max_ns);
     run.w.member("consumer_overrun", cr.overrun);
     run.w.member("consumer_remote", cr.remote);
+    // The standby's rebuild after the join, and after the loss (by the end), in ms from the feed's first datagram.
+    for (;; std::this_thread::sleep_for(std::chrono::milliseconds(10)))
+        if (rcv->standby_ready()) break;
+    const auto rel = [&](std::int64_t t) { return t > 0 ? static_cast<double>(t - flowing_at) / 1e6 : -1.0; };
+    run.w.member("join_done_ms", rel(join_done_at));
+    run.w.member("join_rebuild_from_ms", rel(join_rebuild_from));
+    run.w.member("join_rebuild_to_ms", rel(join_rebuild_to));
+    run.w.member("loss_done_ms", rel(loss_done_at));
+    run.w.member("loss_rebuild_from_ms", rel(rcv->rebuild_started_ns()));
+    run.w.member("loss_rebuild_to_ms", rel(rcv->rebuild_ended_ns()));
     write_recovery(run.w, "join", join, join_drops);
     write_recovery(run.w, "loss", loss, loss_drops);
     write_latency(run.w, "latency_before", cr.before);

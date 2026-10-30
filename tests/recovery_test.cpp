@@ -121,6 +121,7 @@ struct options {
     bool join = false;
     std::int64_t start_late_ns = 0;     // the receiver starts this long after the sender
     bool faults = false;                // S2: refused, silent, rejected, cut, corrupt, then a good spin
+    bool lose_when_flowing = false;     // lost by hand on the first datagram, the feed in order (a late join, the bench's way)
 };
 
 struct outcome {
@@ -208,9 +209,14 @@ outcome run(const world& w, const options& o) {
     std::uint64_t at_loss_digest = 0, at_loss_table = 0, failures_seen = 0;
     bool lost_seen = false;
     const std::int64_t give_up = monotonic_ns() + 60'000'000'000;
+    bool flowing = false;
     while (f.seq().state() != feed_state::ended && monotonic_ns() < give_up) {
         f.poll();
         const std::int64_t now = monotonic_ns();
+        if (o.lose_when_flowing && !flowing && f.counts().datagrams > 0) {
+            flowing = true;
+            f.seq().lose();
+        }
         if (rcv.step(f, now)) recovery<default_book>::drain(f);
         pub::update u;
         while (c.poll(u)) cb.apply(u);
@@ -304,6 +310,18 @@ void late_join(const world& w) {
               " requests); the books equal, the consumer's and the table agree: " + about(r));
 }
 
+// Lost while the feed arrives in order: every later packet held, none applied
+// to the books being replaced, and nothing asked for again after the resume.
+void lost_in_order(const world& w) {
+    options o{26850};
+    o.lose_when_flowing = true;
+    const outcome r = run(w, o);
+    check(r.ended && r.books.empty() && r.consumer_agrees && r.table_ok && r.rc.snapshots == 1 && r.requests == 0 && r.rc.last_held > 0,
+          "S1: lost while the feed arrives in order: held, not applied (" + std::to_string(r.rc.last_held) + " packets held), recovered, "
+          "nothing re-requested after the resume (" + std::to_string(r.requests) + " requests); the books equal, the consumer's and the "
+          "table agree: " + about(r));
+}
+
 void failures(const world& w) {
     options o{26840};
     o.lose_from = 20'000;
@@ -366,6 +384,7 @@ int main() {
     retries_spent(w);
     hold_full(w);
     late_join(w);
+    lost_in_order(w);
     failures(w);
     return itchfh::test::result();
 }

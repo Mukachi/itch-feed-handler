@@ -598,21 +598,25 @@ def recovery_rows(lf, rs):
     rows = []
     for key, what in (("join", "Joining, a late start"), ("loss", "Lost at the peak")):
         xs = [r[key] for r in rs]
+        rebuilt = [(r[f"{key}_rebuild_to_ms"] - r[f"{key}_rebuild_from_ms"]) * 1e6 for r in rs]
         rows.append([what] + [lf.rng([x[f] for x in xs], ms) for f in ("ns", "wait_ns", "apply_ns", "backlog_ns")]
                     + [lf.rng([x["spin_bytes"] / 1e6 for x in xs], lambda v: f"{v:.0f}"),
-                       lf.rng([x["packets_held"] for x in xs], lambda v: f"{v:,}"), lf.rng([x["kernel_drops"] for x in xs], lambda v: f"{v:,}")])
+                       lf.rng([x["packets_held"] for x in xs], lambda v: f"{v:,}"), lf.rng([x["kernel_drops"] for x in xs], lambda v: f"{v:,}"),
+                       lf.rng(rebuilt, ms)])
     return rows
 
 
 RECOVERY_HEAD = ["Recovery", "Lost to live, ms", "Waiting for the spin", "Applying it", "Held feed delivered", "Spin MB", "Packets held",
-                 "Kernel drops"]
+                 "Kernel drops", "Standby rebuilt after, ms"]
 
 
 def recovery_latency_rows(lf, rs):
     rows = []
-    for key, what in (("latency_before", "Before the loss"), ("latency_after_loss", "The 2 s of day time from the loss")):
+    for key, what in (("latency_before", "Before the loss (from 5 s after the start)"), ("latency_after_loss", "The 2 s of day time from the loss")):
         xs = [r[key] for r in rs]
-        rows.append([what, lf.rng([x["count"] for x in xs], lambda v: f"{v:,}")] + [lf.rng([x[f] for x in xs]) for f in ("p50_ns", "p99_ns", "max_ns")])
+        fmt = (lambda v: f"{v / 1e6:,.0f} ms") if any(x["max_ns"] >= 10e6 for x in xs) else lf.ns
+        rows.append([what, lf.rng([x["count"] for x in xs], lambda v: f"{v:,}")]
+                    + [lf.rng([x[f] for x in xs], lf.ns if x0 < 10e6 else fmt) for f in ("p50_ns", "p99_ns", "max_ns") for x0 in [max(x[f] for x in xs)]])
     return rows
 
 
@@ -627,13 +631,15 @@ def recovery_section(lf, note, runs):
              f"then messages {r0['lost_from']:,} to {r0['lost_to']:,} are lost on purpose (not sent, requests for them refused), so "
              "the feed is lost and recovered. Each recovery from `lost` (or the start) to `live` with the hold drained, in three "
              "parts: waiting for the spin (the service's build, on demand, and the login), reading and applying it in 64 KB slices "
-             "with the sockets read between them, delivering the feed held meanwhile. Latency: a consumer process "
+             "with the sockets read between them, delivering the feed held meanwhile; then the old book and handler are rebuilt "
+             "fresh as the next standby, on their own thread (how long that took). Latency: a consumer process "
              f"on CPU {r0['consumer_cpu']} takes each message's intended send time from its read (as note 010), before the loss and "
-             "for the messages of the 2 s of day time from it (held during the recovery, then delivered). Hold "
+             "for the messages of the 2 s of day time from it (held during the recovery, then delivered); before the loss counts "
+             "from 5 s after the start (the join, its backlog and its rebuild past). Hold "
              f"{r0['hold_mb']} MB. One recovery of each kind a run; ranges over runs.", ""]
     for p, rs in paths.items():
         lines += [f"### Over {E2E_PATHS.get(p, p)} ({len(rs)} runs)", "", lf.table(RECOVERY_HEAD, recovery_rows(lf, rs)), "",
-                  lf.table(["Messages", "Read", "p50", "p99", "max"], recovery_latency_rows(lf, rs)), ""]
+                  lf.table(["Messages", "Read", "Intended send to read, p50", "p99", "max"], recovery_latency_rows(lf, rs)), ""]
     return lines
 
 
