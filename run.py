@@ -636,7 +636,12 @@ def recovery_section(lf, note, runs):
              f"on CPU {r0['consumer_cpu']} takes each message's intended send time from its read (as note 010), before the loss and "
              "for the messages of the 2 s of day time from it (held during the recovery, then delivered); before the loss counts "
              "from 5 s after the start (the join, its backlog and its rebuild past). Hold "
-             f"{r0['hold_mb']} MB. One recovery of each kind a run; ranges over runs.", ""]
+             f"{r0['hold_mb']} MB. One recovery of each kind a run; ranges over runs.", "",
+             "Limits ([open items](docs/open.md) I2, I4, I5): the wait is our test service building the snapshot on demand "
+             "(~1.2 s); a real GLIMPSE server answers from state it keeps, so the program's own part is applying and "
+             "delivering the held feed. The peak of live orders is a quiet time (~1.3k packets a second); at the day's "
+             "busiest second (~16k) a recovery would hold about twelve times as much, and the held feed is delivered in one "
+             "call, which at 15k packets a second outlasted the socket's buffer (kernel drops, recovered by re-request).", ""]
     for p, rs in paths.items():
         lines += [f"### Over {E2E_PATHS.get(p, p)} ({len(rs)} runs)", "", lf.table(RECOVERY_HEAD, recovery_rows(lf, rs)), "",
                   lf.table(["Messages", "Read", "Intended send to read, p50", "p99", "max"], recovery_latency_rows(lf, rs)), ""]
@@ -691,8 +696,9 @@ def readme_blocks(lf, sets):
         rows = [[E2E_PATHS.get(p, p)] + recovery_rows(lf, rs)[1][1:5] for p, rs in paths.items()]
         blocks["recovery-summary"] = (lf.table(["Path", "Lost to live, ms", "Waiting for the spin", "Applying it", "Held feed delivered"], rows)
                                       + "\n\nA loss at the sample day's peak of live orders, at the day's own pace, recovered from a GLIMPSE "
-                                      "5.0 snapshot by the program's one thread; ms, range over runs. Joining late, the latency around it "
-                                      "and the method: [RESULTS.md](RESULTS.md).\n")
+                                      "5.0 snapshot by the program's one thread; ms, range over runs. The wait is our test service building "
+                                      "the snapshot on demand, and the peak is a quiet time ([open items](docs/open.md) I4, I5). "
+                                      "Joining late, the latency around it and the method: [RESULTS.md](RESULTS.md).\n")
     if "e2e" in sets and "throughput" in sets:
         paths = e2e_by_path(sets["e2e"][1])
         rows = []

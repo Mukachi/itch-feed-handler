@@ -42,7 +42,7 @@ Recovering from a snapshot when the feed is lost ([note 011](docs/design/011-sna
 | loopback | 1,542–1,546 | 1,254–1,257 | 264–265 | 24 |
 | the card, kernel busy polling | 1,554–1,559 | 1,256–1,259 | 274–276 | 24 |
 
-A loss at the sample day's peak of live orders, at the day's own pace, recovered from a GLIMPSE 5.0 snapshot by the program's one thread; ms, range over runs. Joining late, the latency around it and the method: [RESULTS.md](RESULTS.md).
+A loss at the sample day's peak of live orders, at the day's own pace, recovered from a GLIMPSE 5.0 snapshot by the program's one thread; ms, range over runs. The wait is our test service building the snapshot on demand, and the peak is a quiet time ([open items](docs/open.md) I4, I5). Joining late, the latency around it and the method: [RESULTS.md](RESULTS.md).
 <!-- /results -->
 
 Receiving, over loopback and a 10GBASE-T card ([note 007](docs/design/007-receiver-framer.md)):
