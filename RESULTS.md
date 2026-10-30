@@ -12,12 +12,13 @@ HP ProLiant DL380 Gen9, BIOS P89 (08/29/2024); 2 × Intel(R) Xeon(R) CPU E5-2699
 | handler (note 003) | 3 | 2026-10-26 13:54 UTC | 32fab72 | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | decoder (note 004) | 3 | 2026-10-26 16:05 UTC | a48804a | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | sequencer (note 005) | 6 | 2026-10-26 20:01 UTC | 695b3bf | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
-| snapshot (note 006) | 3 | 2026-10-26 21:22 UTC | 92bd97d | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
+| snapshot (note 006) | 3 | 2026-10-30 15:25 UTC | cc4673a | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | feed (note 007) | 9 | 2026-10-27 00:40 UTC | ee4adfe | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | publish (note 008) | 3 | 2026-10-28 16:25 UTC | 1f39862 | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | record (note 009) | 3 | 2026-10-27 21:58 UTC | cc7ea58 | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | e2e (note 010) | 6 | 2026-10-28 15:38 UTC | 1f39862 | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 | throughput (note 010) | 3 | 2026-10-28 16:32 UTC | 1f39862 | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
+| recovery (note 011) | 6 | 2026-10-30 12:50 UTC | cc4673a | performance | C1 C1E C3 C6 POLL | on | off | yes | 2-21,46-65 |
 
 Every run met note 004's bench-mode conditions (each file's `environment.bench_mode`, checked before use) and was built clean; compiler and flags are in each file's `environment.build`. Ranges are min–max over a set's runs.
 
@@ -279,15 +280,15 @@ The sample day `01302020.NASDAQ_ITCH50.gz` followed by the snapshot server (the 
 
 | At message | Live orders | Spin messages | Spin MB | Build ms | Apply ms |
 |---|---|---|---|---|---|
-| 50,000,001 | 1,713,137 | 1,739,865 | 70 | 948–990 | 302–361 |
-| 100,000,001 | 1,743,843 | 1,770,571 | 71 | 1,083–1,087 | 313–320 |
-| 150,000,001 | 1,759,505 | 1,786,233 | 72 | 1,045–1,049 | 321–328 |
-| 200,000,001 | 1,778,207 | 1,804,935 | 72 | 1,116–1,118 | 328–335 |
-| 250,000,001 | 1,779,495 | 1,806,223 | 73 | 1,041–1,043 | 330–338 |
-| 300,000,001 | 1,787,957 | 1,814,685 | 73 | 1,075 | 334–341 |
-| 350,000,001 | 1,771,672 | 1,798,400 | 72 | 1,095–1,097 | 333–340 |
-| 400,000,001 | 1,871,048 | 1,897,776 | 76 | 1,171–1,174 | 352–359 |
-| 412,349,206 (the peak) | 1,925,638 | 1,952,366 | 79 | 1,211–1,215 | 362–369 |
+| 50,000,001 | 1,713,137 | 1,739,865 | 70 | 940–984 | 187–252 |
+| 100,000,001 | 1,743,843 | 1,770,571 | 71 | 1,077–1,116 | 195–262 |
+| 150,000,001 | 1,759,505 | 1,786,233 | 72 | 1,039–1,042 | 201–202 |
+| 200,000,001 | 1,778,207 | 1,804,935 | 72 | 1,109–1,111 | 206–207 |
+| 250,000,001 | 1,779,495 | 1,806,223 | 73 | 1,034–1,037 | 209 |
+| 300,000,001 | 1,787,957 | 1,814,685 | 73 | 1,067–1,069 | 212–213 |
+| 350,000,001 | 1,771,672 | 1,798,400 | 72 | 1,088 | 212–213 |
+| 400,000,001 | 1,871,048 | 1,897,776 | 76 | 1,162–1,165 | 223–224 |
+| 412,349,206 (the peak) | 1,925,638 | 1,952,366 | 79 | 1,203–1,206 | 230–231 |
 
 ## Receiving the feed (note 007)
 
@@ -437,3 +438,31 @@ The whole sample day `01302020.NASDAQ_ITCH50.gz` (423,285,709 messages) from a r
 | fast | 4.23 | 100.0–100.2 |
 | fast, published to one consumer | 2.57–2.62 | 161.3–164.6 |
 | reference | 1.01–1.02 | 413.9–417.7 |
+
+## Recovery from a snapshot (note 011)
+
+The program's components on CPU 2 (one thread, the default book, the publisher, recording off), with a standby book rebuilt on CPU 1, against our sender at the sample day's own pace from 20 s before the peak of live orders (message 412,349,206, 15:57:45.69) to 20 s after, and its GLIMPSE 5.0 service (SoupBinTCP, following what has been sent on note 006's reference structures). The program starts by joining from a snapshot; then messages 412,349,206 to 412,351,205 are lost on purpose (not sent, requests for them refused), so the feed is lost and recovered. Each recovery from `lost` (or the start) to `live` with the hold drained, in three parts: waiting for the spin (the service's build, on demand, and the login), reading and applying it in 64 KB slices with the sockets read between them, delivering the feed held meanwhile; then the old book and handler are rebuilt fresh as the next standby, on their own thread (how long that took). Latency: a consumer process on CPU 3 takes each message's intended send time from its read (as note 010), before the loss and for the messages of the 2 s of day time from it (held during the recovery, then delivered); before the loss counts from 5 s after the start (the join, its backlog and its rebuild past). Hold 256 MB. One recovery of each kind a run; ranges over runs.
+
+### Over loopback (3 runs)
+
+| Recovery | Lost to live, ms | Waiting for the spin | Applying it | Held feed delivered | Spin MB | Packets held | Kernel drops | Standby rebuilt after, ms |
+|---|---|---|---|---|---|---|---|---|
+| Joining, a late start | 1,530–1,531 | 1,247–1,248 | 263–264 | 20 | 78 | 1,584–1,585 | 0 | 1,384–1,387 |
+| Lost at the peak | 1,542–1,546 | 1,254–1,257 | 264–265 | 24 | 79 | 1,995–1,996 | 0 | 1,383–1,386 |
+
+| Messages | Read | Intended send to read, p50 | p99 | max |
+|---|---|---|---|---|
+| Before the loss (from 5 s after the start) | 519,760 | 9,519–9,695 | 21.8 µs–22.1 µs | 39.0 µs–63.4 µs |
+| The 2 s of day time from the loss | 199,259–199,520 | 15.7 µs–15.8 µs | 1,311 ms–1,315 ms | 1,518 ms–1,522 ms |
+
+### Over the card, kernel busy polling (3 runs)
+
+| Recovery | Lost to live, ms | Waiting for the spin | Applying it | Held feed delivered | Spin MB | Packets held | Kernel drops | Standby rebuilt after, ms |
+|---|---|---|---|---|---|---|---|---|
+| Joining, a late start | 1,544–1,546 | 1,249 | 274–276 | 20 | 78 | 1,610–1,614 | 0 | 1,389 |
+| Lost at the peak | 1,554–1,559 | 1,256–1,259 | 274–276 | 24 | 79 | 1,998–1,999 | 0 | 1,388 |
+
+| Messages | Read | Intended send to read, p50 | p99 | max |
+|---|---|---|---|---|
+| Before the loss (from 5 s after the start) | 519,760 | 23.1 µs–23.4 µs | 38.7 µs–39.1 µs | 57.5 µs–61.8 µs |
+| The 2 s of day time from the loss | 198,661–198,947 | 29.9 µs–30.1 µs | 1,323 ms–1,330 ms | 1,530 ms–1,535 ms |

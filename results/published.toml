@@ -18,7 +18,7 @@ runs = ["sequencer-dev-lnx01-20261026T200100Z.json", "sequencer-dev-lnx01-202610
 
 [snapshot]
 note = "006"
-runs = ["snapshot-dev-lnx01-20261026T212236Z.json", "snapshot-dev-lnx01-20261026T213409Z.json", "snapshot-dev-lnx01-20261026T214548Z.json"]
+runs = ["snapshot-dev-lnx01-20261030T152501Z.json", "snapshot-dev-lnx01-20261030T153635Z.json", "snapshot-dev-lnx01-20261030T154808Z.json"]
 
 [feed]
 note = "007"
@@ -50,3 +50,12 @@ note = "010"
 runs = ["throughput-dev-lnx01-20261028T163225Z.json",
         "throughput-dev-lnx01-20261028T164357Z.json",
         "throughput-dev-lnx01-20261028T165528Z.json"]
+
+[recovery]
+note = "011"
+runs = ["recovery-dev-lnx01-20261030T125049Z.json",
+        "recovery-dev-lnx01-20261030T130208Z.json",
+        "recovery-dev-lnx01-20261030T130937Z.json",
+        "recovery-dev-lnx01-20261030T132532Z.json",
+        "recovery-dev-lnx01-20261030T133255Z.json",
+        "recovery-dev-lnx01-20261030T134023Z.json"]

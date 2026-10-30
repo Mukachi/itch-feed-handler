@@ -37,7 +37,12 @@ One way, open loop, from the packet's intended send time to a consumer process r
 Recovering from a snapshot when the feed is lost ([note 011](docs/design/011-snapshot-recovery.md)):
 
 <!-- results:recovery-summary -->
-Recovery figures: not yet measured (design note 011).
+| Path | Lost to live, ms | Waiting for the spin | Applying it | Held feed delivered |
+|---|---|---|---|---|
+| loopback | 1,542–1,546 | 1,254–1,257 | 264–265 | 24 |
+| the card, kernel busy polling | 1,554–1,559 | 1,256–1,259 | 274–276 | 24 |
+
+A loss at the sample day's peak of live orders, at the day's own pace, recovered from a GLIMPSE 5.0 snapshot by the program's one thread; ms, range over runs. Joining late, the latency around it and the method: [RESULTS.md](RESULTS.md).
 <!-- /results -->
 
 Receiving, over loopback and a 10GBASE-T card ([note 007](docs/design/007-receiver-framer.md)):
@@ -143,7 +148,7 @@ The sample day in 9,358,889 MoldUDP64 packets, one CPU, ns, range over 6 runs; t
 <!-- results:snapshot-summary -->
 | At message | Live orders | Spin messages | Spin MB | Build ms | Apply ms |
 |---|---|---|---|---|---|
-| 412,349,206 (the peak) | 1,925,638 | 1,952,366 | 79 | 1,211–1,215 | 362–369 |
+| 412,349,206 (the peak) | 1,925,638 | 1,952,366 | 79 | 1,203–1,206 | 230–231 |
 
 A GLIMPSE 5.0 snapshot at the sample day's peak of live orders: built by the snapshot server, applied by a client into a fresh book, one CPU, range over 3 runs. Every point of the day: [RESULTS.md](RESULTS.md).
 <!-- /results -->
