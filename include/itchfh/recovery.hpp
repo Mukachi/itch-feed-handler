@@ -14,7 +14,9 @@
 //                 the feed `lost`, and is tried again after `retry_ns`.
 // While a spin is applied the publisher is muted: nothing to the rings, the
 // table untouched; restored() then rebuilds the table and replays every
-// consumer (note 008's D5).
+// consumer (note 008's D5). The sink is the publisher unless another with its
+// calls is given (begin, feed, tick, rebind, watch, mute, restored): what the
+// integration repo's strategy sink needs.
 // Design: docs/design/011-snapshot-recovery.md
 #pragma once
 
@@ -39,11 +41,11 @@
 
 namespace itchfh {
 
-template <class Book = default_book>
+template <class Book = default_book, class Sink = publisher<Book>>
 struct published_on {
-    publisher<Book>& pub;
-    handler<Book, publisher<Book>> h;
-    published_on(Book& b, publisher<Book>& p, const handler_config& c = {}) : pub(p), h(b, p, c) {}
+    Sink& pub;
+    handler<Book, Sink> h;
+    published_on(Book& b, Sink& p, const handler_config& c = {}) : pub(p), h(b, p, c) {}
     void on(std::uint64_t sequence, const message& m) {
         pub.begin(sequence, m.timestamp_ns);
         h.on(m);
@@ -71,13 +73,13 @@ struct recovery_counts {
     std::uint64_t last_bytes = 0, last_held = 0, last_messages = 0;
 };
 
-template <class Book = default_book>
+template <class Book = default_book, class Sink = publisher<Book>>
 class recovery {
 public:
-    using pair = published_on<Book>;
-    using handler_type = handler<Book, publisher<Book>>;
+    using pair = published_on<Book, Sink>;
+    using handler_type = handler<Book, Sink>;
 
-    recovery(publisher<Book>& pub, const book_config& bc, const handler_config& hc, const recovery_config& c)
+    recovery(Sink& pub, const book_config& bc, const handler_config& hc, const recovery_config& c)
         : pub_(pub), bc_(bc), hc_(hc), cfg_(c), buf_(std::make_unique<unsigned char[]>(c.slice)) {
         for (slot& s : slots_) build(s);
         client_.emplace(slots_[1].p->h);
@@ -241,7 +243,7 @@ private:
         }
     }
 
-    publisher<Book>& pub_;
+    Sink& pub_;
     book_config bc_;
     handler_config hc_;
     recovery_config cfg_;
